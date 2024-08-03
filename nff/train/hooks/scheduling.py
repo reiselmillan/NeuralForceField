@@ -3,15 +3,10 @@ Copyright: SchNetPack, 2019
 Retrieved from https://github.com/atomistic-machine-learning/schnetpack/tree/dev/src/schnetpack/train/hooks
 """
 
-import numpy as np
 import torch
-from torch.optim.lr_scheduler import (
-    CosineAnnealingLR,
-    ReduceLROnPlateau,
-    StepLR,
-    _LRScheduler,
-)
-
+import numpy as np
+from torch.optim.lr_scheduler import (ReduceLROnPlateau, StepLR,
+                                      _LRScheduler)
 from nff.train.hooks import Hook
 
 
@@ -52,31 +47,26 @@ class EarlyStoppingHook(Hook):
 
 
 class WarmRestartHook(Hook):
-
     def __init__(
-        self,
-        optimizer,
-        T0=10,
-        Tmult=2,
-        each_step=False,
-        min_lr=1e-6,
-        lr_factor=1.0,
-        patience=1,
+        self, T0=10, Tmult=2, each_step=False, lr_min=1e-6, lr_factor=1.0, patience=1
     ):
+        self.scheduler = None
         self.each_step = each_step
         self.T0 = T0
         self.Tmult = Tmult
         self.Tmax = T0
-        self.min_lr = min_lr
+        self.lr_min = lr_min
         self.lr_factor = lr_factor
         self.patience = patience
         self.waiting = 0
-        self.scheduler = CosineAnnealingLR(optimizer, self.Tmax, self.min_lr)
+
         self.best_previous = float("Inf")
         self.best_current = float("Inf")
 
     def on_train_begin(self, trainer):
-        self.scheduler = CosineAnnealingLR(trainer.optimizer, self.Tmax, self.min_lr)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            trainer.optimizer, self.Tmax, self.lr_min
+        )
         self.init_opt_state = trainer.optimizer.state_dict()
 
     def on_batch_begin(self, trainer, train_batch):
@@ -129,7 +119,7 @@ class MaxEpochHook(Hook):
     Args:
        max_epochs (int): maximal number of epochs.
 
-    """
+   """
 
     def __init__(self, max_epochs):
         self.max_epochs = max_epochs
@@ -252,7 +242,7 @@ class ReduceLROnPlateauHook(Hook):
         window_length=1,
         stop_after_min=False,
         cooldown=0,
-        threshold=0.0001,
+        threshold=0.0001
     ):
         self.patience = patience
         self.factor = factor
@@ -266,7 +256,8 @@ class ReduceLROnPlateauHook(Hook):
             factor=self.factor,
             min_lr=self.min_lr,
             cooldown=self.cooldown,
-            threshold=self.threshold,
+            threshold=self.threshold
+
         )
         self.window_length = window_length
         self.stop_after_min = stop_after_min
@@ -319,21 +310,26 @@ class ExponentialDecayHook(Hook):
 
 class WarmUpLR(_LRScheduler):
 
-    def __init__(self, optimizer, n_steps, max_lr, last_epoch=-1, verbose=False):
+    def __init__(self,
+                 optimizer,
+                 n_steps,
+                 max_lr,
+                 last_epoch=-1,
+                 verbose=False):
 
         self.n_steps = n_steps
         self.max_lr = max_lr
         super(WarmUpLR, self).__init__(optimizer, last_epoch, verbose)
 
         for param_group in self.optimizer.param_groups:
-            param_group["lr"] = 0
+            param_group['lr'] = 0
 
     def set_lr(self):
         scale = self._step_count / self.n_steps
         new_lr = self.max_lr * scale
 
         for param_group in self.optimizer.param_groups:
-            param_group["lr"] = new_lr
+            param_group['lr'] = new_lr
 
     def step(self):
         self._step_count += 1
@@ -341,10 +337,19 @@ class WarmUpLR(_LRScheduler):
 
 
 class WarmUpLRHook(Hook):
-    def __init__(self, optimizer, n_steps, max_lr):
-        self.scheduler = WarmUpLR(optimizer=optimizer, n_steps=n_steps, max_lr=max_lr)
+    def __init__(self,
+                 optimizer,
+                 n_steps,
+                 max_lr):
+        self.scheduler = WarmUpLR(optimizer=optimizer,
+                                  n_steps=n_steps,
+                                  max_lr=max_lr)
 
-    def on_batch_end(self, trainer, train_batch, result, loss):
+    def on_batch_end(self,
+                     trainer,
+                     train_batch,
+                     result,
+                     loss):
 
         self.scheduler.step()
         if self.scheduler._step_count >= self.scheduler.n_steps:

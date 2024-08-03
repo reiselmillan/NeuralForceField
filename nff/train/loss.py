@@ -1,7 +1,6 @@
-import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
-
+import numpy as np
 from nff.utils import constants as const
 
 __all__ = ["build_mse_loss"]
@@ -9,7 +8,10 @@ __all__ = ["build_mse_loss"]
 EPS = 1e-15
 
 
-def build_general_loss(loss_coef, operation, correspondence_keys=None, cutoff=None):
+def build_general_loss(loss_coef,
+                       operation,
+                       correspondence_keys=None,
+                       cutoff=None):
     """
     Build a general  loss function.
 
@@ -29,17 +31,18 @@ def build_general_loss(loss_coef, operation, correspondence_keys=None, cutoff=No
             given by "energy_grad". This is useful if we're only outputting one quantity,
             such as the energy gradient, but we want two different outputs (such as
             "energy_grad" and "autopology_energy_grad") to be compared to it.
-        cutoff (dict): a dictionary of cutoff values for each property.
 
     Returns:
         mean squared error loss function
 
     """
 
-    correspondence_keys = {} if (correspondence_keys is None) else correspondence_keys
+    correspondence_keys = {} if (
+        correspondence_keys is None) else correspondence_keys
     cutoff = {} if (cutoff is None) else cutoff
 
-    def loss_fn(ground_truth, results):
+    def loss_fn(ground_truth,
+                results):
         """Calculates the MSE between ground_truth and results.
 
         Args:
@@ -56,6 +59,7 @@ def build_general_loss(loss_coef, operation, correspondence_keys=None, cutoff=No
 
         loss = 0.0
         for key, coef in loss_coef.items():
+
             if key not in ground_truth.keys():
                 ground_key = correspondence_keys[key]
             else:
@@ -67,7 +71,8 @@ def build_general_loss(loss_coef, operation, correspondence_keys=None, cutoff=No
             # select only properties which are given
             valid_idx = torch.bitwise_not(torch.isnan(targ))
             if key in cutoff:
-                valid_idx *= targ <= cutoff[key]
+                valid_idx *= (targ <= cutoff[key])
+
             targ = targ[valid_idx]
             pred = pred[valid_idx]
 
@@ -116,50 +121,55 @@ def cross_entropy(targ, pred):
     """
 
     targ = targ.to(torch.float)
-    fn = torch.nn.BCELoss(reduction="none")
+    fn = torch.nn.BCELoss(reduction='none')
     diff = fn(pred, targ)
 
     return diff
 
 
-def cross_entropy_sum(targ, pred, pos_weight=None):
+def cross_entropy_sum(targ,
+                      pred,
+                      pos_weight=None):
+
     if pos_weight is None:
-        loss_fn = torch.nn.BCELoss(reduction="sum")
+        loss_fn = torch.nn.BCELoss(reduction='sum')
         loss = loss_fn(pred, targ)
     else:
-        loss = -pos_weight * targ * torch.log(pred) - (1 - targ) * torch.log(1 - pred)
+        loss = (-pos_weight * targ * torch.log(pred) -
+                (1 - targ) * torch.log(1 - pred))
 
     return loss
 
 
 def get_cross_entropy_loss(pos_weight):
     if pos_weight is None:
-
         def fn(targ, pred):
-            loss_fn = torch.nn.BCELoss(reduction="sum")
+            loss_fn = torch.nn.BCELoss(reduction='sum')
             loss = loss_fn(pred, targ)
             return loss
-
     else:
-
         def fn(targ, pred):
-            loss = -pos_weight * targ * torch.log(pred) - (1 - targ) * torch.log(1 - pred)
+            loss = (-pos_weight * targ * torch.log(pred) -
+                    (1 - targ) * torch.log(1 - pred))
             return loss
-
     return fn
 
 
 def logits_cross_entropy(targ, pred):
+
     targ = targ.to(torch.float)
-    fn = torch.nn.BCEWithLogitsLoss(reduction="none")
+    fn = torch.nn.BCEWithLogitsLoss(reduction='none')
     diff = fn(pred, targ)
 
     return diff
 
 
-def zhu_p(gap, expec_gap, func_type):
+def zhu_p(gap,
+          expec_gap,
+          func_type):
+
     if func_type == "gaussian":
-        p = torch.exp(-(gap**2) / (2 * expec_gap**2))
+        p = torch.exp(-gap ** 2 / (2 * expec_gap ** 2))
     elif func_type == "exponential":
         p = torch.exp(-gap / expec_gap)
     else:
@@ -168,13 +178,17 @@ def zhu_p(gap, expec_gap, func_type):
     return p
 
 
-def zhu_p_grad(gap, gap_grad, expec_gap, func_type):
+def zhu_p_grad(gap,
+               gap_grad,
+               expec_gap,
+               func_type):
+
     if func_type == "gaussian":
-        p = torch.exp(-(gap**2) / (2 * expec_gap**2))
-        p_grad = -p * gap * gap_grad / (expec_gap**2)
+        p = torch.exp(-gap ** 2 / (2 * expec_gap ** 2))
+        p_grad = - p * gap * gap_grad / (expec_gap ** 2)
     elif func_type == "exponential":
         p = torch.exp(-gap / expec_gap)
-        p_grad = -p * gap_grad / expec_gap
+        p_grad = - p * gap_grad / expec_gap
 
     else:
         raise NotImplementedError
@@ -182,30 +196,38 @@ def zhu_p_grad(gap, gap_grad, expec_gap, func_type):
     return p_grad
 
 
-def batch_zhu_p(batch, upper_key, lower_key, expec_gap, func_type, gap_shape=None):
+def batch_zhu_p(batch,
+                upper_key,
+                lower_key,
+                expec_gap,
+                func_type,
+                gap_shape=None):
+
     gap = batch[upper_key] - batch[lower_key]
 
     if gap_shape is not None:
         gap = gap.view(gap_shape)
-    p = zhu_p(gap=gap, expec_gap=expec_gap, func_type=func_type)
+    p = zhu_p(gap=gap,
+              expec_gap=expec_gap,
+              func_type=func_type)
 
     return p
 
 
-def batch_zhu_p_grad(
-    batch,
-    upper_key,
-    lower_key,
-    expec_gap,
-    func_type,
-    gap_shape=None,
-    gap_grad_shape=None,
-):
-    num_atoms = batch["num_atoms"].long()
+def batch_zhu_p_grad(batch,
+                     upper_key,
+                     lower_key,
+                     expec_gap,
+                     func_type,
+                     gap_shape=None,
+                     gap_grad_shape=None):
+
+    num_atoms = batch['num_atoms'].long()
     gap = batch[upper_key] - batch[lower_key]
 
     # give it the same shape as the forces
-    gap = torch.cat([geom_gap.expand(n, 3) for geom_gap, n in zip(gap, num_atoms)])
+    gap = torch.cat([geom_gap.expand(n, 3)
+                     for geom_gap, n in zip(gap, num_atoms)])
 
     gap_grad = batch[upper_key + "_grad"] - batch[lower_key + "_grad"]
 
@@ -214,7 +236,11 @@ def batch_zhu_p_grad(
     if gap_grad_shape is not None:
         gap_grad = gap_grad.view(gap_grad_shape)
 
-    p_grad = zhu_p_grad(gap=gap, gap_grad=gap_grad, expec_gap=expec_gap, func_type=func_type)
+    p_grad = zhu_p_grad(
+        gap=gap,
+        gap_grad=gap_grad,
+        expec_gap=expec_gap,
+        func_type=func_type)
 
     return p_grad, gap, gap_grad
 
@@ -229,7 +255,9 @@ def results_to_batch(results, ground_truth):
     return results_batch
 
 
-def build_mse_loss(loss_coef, correspondence_keys=None, cutoff=None):
+def build_mse_loss(loss_coef,
+                   correspondence_keys=None,
+                   cutoff=None):
     """
     Build MSE loss from loss_coef.
     Args:
@@ -238,16 +266,16 @@ def build_mse_loss(loss_coef, correspondence_keys=None, cutoff=None):
         loss_fn (function): loss function
     """
 
-    loss_fn = build_general_loss(
-        loss_coef=loss_coef,
-        operation=mse_operation,
-        correspondence_keys=correspondence_keys,
-        cutoff=cutoff,
-    )
+    loss_fn = build_general_loss(loss_coef=loss_coef,
+                                 operation=mse_operation,
+                                 correspondence_keys=correspondence_keys,
+                                 cutoff=cutoff)
     return loss_fn
 
 
-def build_mae_loss(loss_coef, correspondence_keys=None, cutoff=None):
+def build_mae_loss(loss_coef,
+                   correspondence_keys=None,
+                   cutoff=None):
     """
     Build MSE loss from loss_coef.
     Args:
@@ -256,16 +284,16 @@ def build_mae_loss(loss_coef, correspondence_keys=None, cutoff=None):
         loss_fn (function): loss function
     """
 
-    loss_fn = build_general_loss(
-        loss_coef=loss_coef,
-        operation=mae_operation,
-        correspondence_keys=correspondence_keys,
-        cutoff=cutoff,
-    )
+    loss_fn = build_general_loss(loss_coef=loss_coef,
+                                 operation=mae_operation,
+                                 correspondence_keys=correspondence_keys,
+                                 cutoff=cutoff)
     return loss_fn
 
 
-def build_rmse_loss(loss_coef, correspondence_keys=None, cutoff=None):
+def build_rmse_loss(loss_coef,
+                    correspondence_keys=None,
+                    cutoff=None):
     """
     Build MSE loss from loss_coef.
     Args:
@@ -274,12 +302,10 @@ def build_rmse_loss(loss_coef, correspondence_keys=None, cutoff=None):
         loss_fn (function): loss function
     """
 
-    loss_fn = build_general_loss(
-        loss_coef=loss_coef,
-        operation=rms_operation,
-        correspondence_keys=correspondence_keys,
-        cutoff=cutoff,
-    )
+    loss_fn = build_general_loss(loss_coef=loss_coef,
+                                 operation=rms_operation,
+                                 correspondence_keys=correspondence_keys,
+                                 cutoff=cutoff)
     return loss_fn
 
 
@@ -292,11 +318,9 @@ def build_cross_entropy_loss(loss_coef, correspondence_keys=None):
         loss_fn (function): loss function
     """
 
-    loss_fn = build_general_loss(
-        loss_coef=loss_coef,
-        operation=cross_entropy,
-        correspondence_keys=correspondence_keys,
-    )
+    loss_fn = build_general_loss(loss_coef=loss_coef,
+                                 operation=cross_entropy,
+                                 correspondence_keys=correspondence_keys)
     return loss_fn
 
 
@@ -309,21 +333,30 @@ def build_logits_cross_entropy_loss(loss_coef, correspondence_keys=None):
         loss_fn (function): loss function
     """
 
-    loss_fn = build_general_loss(
-        loss_coef=loss_coef,
-        operation=logits_cross_entropy,
-        correspondence_keys=correspondence_keys,
-    )
+    loss_fn = build_general_loss(loss_coef=loss_coef,
+                                 operation=logits_cross_entropy,
+                                 correspondence_keys=correspondence_keys)
     return loss_fn
 
 
-def get_p(ground_truth, results, upper_key, lower_key, expec_gap, func_type):
+def get_p(ground_truth,
+          results,
+          upper_key,
+          lower_key,
+          expec_gap,
+          func_type):
+
     targ_gap = ground_truth[upper_key] - ground_truth[lower_key]
 
-    targ_p = zhu_p(gap=targ_gap, expec_gap=expec_gap, func_type=func_type)
+    targ_p = zhu_p(gap=targ_gap,
+                   expec_gap=expec_gap,
+                   func_type=func_type)
 
-    pred_gap = (results[upper_key] - results[lower_key]).view(targ_gap.shape)
-    pred_p = zhu_p(gap=pred_gap, expec_gap=expec_gap, func_type=func_type)
+    pred_gap = (results[upper_key] - results[lower_key]
+                ).view(targ_gap.shape)
+    pred_p = zhu_p(gap=pred_gap,
+                   expec_gap=expec_gap,
+                   func_type=func_type)
 
     valid_idx = torch.bitwise_not(torch.isnan(targ_p))
     targ_p = targ_p[valid_idx]
@@ -351,29 +384,32 @@ def build_skewed_p_loss(loss_dict):
     b = params["b"]
     lower_key = loss_dict["params"]["lower_energy"]
     upper_key = loss_dict["params"]["upper_energy"]
-    expec_gap = loss_dict["params"]["expected_gap"] * const.AU_TO_KCAL["energy"]
+    expec_gap = loss_dict["params"]["expected_gap"] * \
+        const.AU_TO_KCAL["energy"]
     func_type = loss_dict["params"].get("func_type", "gaussian")
 
-    factor_num = np.exp(b) * (b * (-1 + np.exp(-a)) + a * (-1 + np.exp(b)))
+    factor_num = np.exp(b) * (b * (-1 + np.exp(-a))
+                              + a * (-1 + np.exp(b)))
     factor_denom = a - a * np.exp(b) + b * np.exp(b) * (-1 + np.exp(a))
     factor = factor_num / factor_denom
     true_l0 = l_0 / factor
 
     def loss_fn(ground_truth, results, **kwargs):
-        p_targ, p_pred = get_p(
-            ground_truth=ground_truth,
-            results=results,
-            upper_key=upper_key,
-            lower_key=lower_key,
-            expec_gap=expec_gap,
-            func_type=func_type,
-        )
+
+        p_targ, p_pred = get_p(ground_truth=ground_truth,
+                               results=results,
+                               upper_key=upper_key,
+                               lower_key=lower_key,
+                               expec_gap=expec_gap,
+                               func_type=func_type)
 
         loss_1 = true_l0 * torch.exp(np.log(l_max / true_l0) * p_targ)
 
         delta = p_pred - p_targ
-        loss_2_num = np.exp(b) * (b * (-1 + torch.exp(-a * delta)) + a * (-1 + torch.exp(b * delta)))
-        loss_2_denom = a - a * np.exp(b) + b * np.exp(b) * (-1 + np.exp(a))
+        loss_2_num = np.exp(b) * (b * (-1 + torch.exp(-a * delta))
+                                  + a * (-1 + torch.exp(b * delta)))
+        loss_2_denom = (a - a * np.exp(b)
+                        + b * np.exp(b) * (-1 + np.exp(a)))
         loss_2 = loss_2_num / loss_2_denom
 
         loss = (loss_1 * loss_2).mean()
@@ -384,9 +420,11 @@ def build_skewed_p_loss(loss_dict):
 
 
 def build_zhu_loss(loss_dict):
+
     lower_key = loss_dict["params"]["lower_energy"]
     upper_key = loss_dict["params"]["upper_energy"]
-    expec_gap = loss_dict["params"]["expected_gap"] * const.AU_TO_KCAL["energy"]
+    expec_gap = loss_dict["params"]["expected_gap"] * \
+        const.AU_TO_KCAL["energy"]
     loss_key = loss_dict["params"].get("loss_type", "mse")
     func_type = loss_dict["params"].get("func_type", "gaussian")
     pos_weight = loss_dict["params"].get("pos_weight")
@@ -399,16 +437,16 @@ def build_zhu_loss(loss_dict):
     coef = loss_dict["coef"]
 
     def loss_fn(ground_truth, results, **kwargs):
-        targ_p, pred_p = get_p(
-            ground_truth=ground_truth,
-            results=results,
-            upper_key=upper_key,
-            lower_key=lower_key,
-            expec_gap=expec_gap,
-            func_type=func_type,
-        )
 
-        diff = loss_type(targ_p, pred_p)
+        targ_p, pred_p = get_p(ground_truth=ground_truth,
+                               results=results,
+                               upper_key=upper_key,
+                               lower_key=lower_key,
+                               expec_gap=expec_gap,
+                               func_type=func_type)
+
+        diff = loss_type(targ_p,
+                         pred_p)
         err_sq = coef * torch.mean(diff)
 
         loss = err_sq
@@ -419,9 +457,11 @@ def build_zhu_loss(loss_dict):
 
 
 def build_zhu_grad_loss(loss_dict):
+
     lower_key = loss_dict["params"]["lower_energy"]
     upper_key = loss_dict["params"]["upper_energy"]
-    expec_gap = loss_dict["params"]["expected_gap"] * const.AU_TO_KCAL["energy"]
+    expec_gap = loss_dict["params"]["expected_gap"] * \
+        const.AU_TO_KCAL["energy"]
     loss_key = loss_dict["params"].get("loss_type", "mse")
     func_type = loss_dict["params"].get("func_type", "gaussian")
 
@@ -435,27 +475,26 @@ def build_zhu_grad_loss(loss_dict):
     coef = loss_dict["coef"]
 
     def loss_fn(ground_truth, results, **kwargs):
+
         targ_p_grad, targ_gap, targ_gap_grad = batch_zhu_p_grad(
             batch=ground_truth,
             expec_gap=expec_gap,
             func_type=func_type,
             upper_key=upper_key,
-            lower_key=lower_key,
-        )
+            lower_key=lower_key)
 
         gap_shape = targ_gap.shape
         gap_grad_shape = targ_gap_grad.shape
-        results_batch = results_to_batch(results=results, ground_truth=ground_truth)
+        results_batch = results_to_batch(results=results,
+                                         ground_truth=ground_truth)
 
-        pred_p_grad, _, _ = batch_zhu_p_grad(
-            batch=results_batch,
-            upper_key=upper_key,
-            lower_key=lower_key,
-            expec_gap=expec_gap,
-            func_type=func_type,
-            gap_shape=gap_shape,
-            gap_grad_shape=gap_grad_shape,
-        )
+        pred_p_grad, _, _ = batch_zhu_p_grad(batch=results_batch,
+                                             upper_key=upper_key,
+                                             lower_key=lower_key,
+                                             expec_gap=expec_gap,
+                                             func_type=func_type,
+                                             gap_shape=gap_shape,
+                                             gap_grad_shape=gap_grad_shape)
 
         valid_idx = torch.bitwise_not(torch.isnan(targ_p_grad))
         targ_p_grad = targ_p_grad[valid_idx]
@@ -488,7 +527,9 @@ def build_diabat_sign_loss(loss_dict):
     coef = loss_dict["coef"]
 
     def loss_fn(ground_truth, results, **kwargs):
-        delta = results[diag_keys[1]] - results[diag_keys[0]]
+
+        delta = (results[diag_keys[1]]
+                 - results[diag_keys[0]])
 
         valid_idx = torch.bitwise_not(torch.isnan(delta))
 
@@ -509,18 +550,26 @@ def build_diabat_sign_loss(loss_dict):
     return loss_fn
 
 
-def correct_nacv_sign(pred, targ, num_atoms):
+def correct_nacv_sign(pred,
+                      targ,
+                      num_atoms):
+
     targ_list = torch.split(targ, num_atoms)
     pred_list = torch.split(pred, num_atoms)
     signs = []
 
-    for targ_batch, pred_batch in zip(targ_list, pred_list):
-        pos_delta = (targ_batch - pred_batch).abs().mean().item()
-        neg_delta = (targ_batch + pred_batch).abs().mean().item()
+    for targ_batch, pred_batch in zip(targ_list,
+                                      pred_list):
+        pos_delta = ((targ_batch - pred_batch).abs()
+                     .mean().item())
+        neg_delta = ((targ_batch + pred_batch).abs()
+                     .mean().item())
         sign = 1 if (pos_delta < neg_delta) else -1
         signs.append(sign)
 
-    sign_tensor = torch.cat([sign * torch.ones(n, 3) for sign, n in zip(signs, num_atoms)]).to(targ.device)
+    sign_tensor = (torch.cat([sign * torch.ones(n, 3)
+                              for sign, n in zip(signs, num_atoms)])
+                   .to(targ.device))
 
     targ = targ * sign_tensor
 
@@ -528,6 +577,7 @@ def correct_nacv_sign(pred, targ, num_atoms):
 
 
 def build_nacv_loss(loss_dict):
+
     params = loss_dict["params"]
     key = params["key"]
     loss_type = params.get("loss_type", "mse")
@@ -537,17 +587,23 @@ def build_nacv_loss(loss_dict):
     take_abs = params.get("abs", False)
     take_max = params.get("max", False)
 
-    def loss_fn(ground_truth, results, **kwargs):
+    def loss_fn(ground_truth,
+                results,
+                **kwargs):
+
         targ = ground_truth[key]
         pred = results[key]
 
         if take_abs:
+
             targ = abs(targ)
             pred = abs(pred)
 
         else:
             num_atoms = ground_truth["num_atoms"].tolist()
-            pred, targ = correct_nacv_sign(pred=pred, targ=targ, num_atoms=num_atoms)
+            pred, targ = correct_nacv_sign(pred=pred,
+                                           targ=targ,
+                                           num_atoms=num_atoms)
 
         valid_idx = torch.bitwise_not(torch.isnan(targ))
         targ = targ[valid_idx]
@@ -572,53 +628,25 @@ def build_nacv_loss(loss_dict):
     return loss_fn
 
 
-def build_nacv_outer_loss(loss_dict):
-    params = loss_dict["params"]
-    key = params["key"]
-    loss_type = params.get("loss_type", "mse")
-
-    coef = loss_dict["coef"]
-
-    def loss_fn(ground_truth, results, **kwargs):
-        num_atoms = ground_truth["num_atoms"].tolist()
-        targ_vecs = torch.split(ground_truth[key], num_atoms)
-        pred_mats = results[key + "_mat"]
-
-        diff = 0.0
-
-        for vec, pred in zip(targ_vecs, pred_mats):
-            if torch.isnan(vec).any():
-                continue
-
-            targ = torch.outer(vec.flatten(), vec.flatten())
-
-            if loss_type == "mse":
-                diff += mse_operation(targ, pred)
-            elif loss_type == "mae":
-                diff += mae_operation(targ, pred)
-            else:
-                raise NotImplementedError
-
-        loss = coef * torch.mean(diff)
-
-        return loss
-
-    return loss_fn
-
-
 def build_trans_dip_loss(loss_dict):
+
     params = loss_dict["params"]
     key = params["key"]
     coef = loss_dict["coef"]
 
-    def loss_fn(ground_truth, results, **kwargs):
+    def loss_fn(ground_truth,
+                results,
+                **kwargs):
+
         targ = ground_truth[key].reshape(-1, 3)
         pred = results[key].reshape(-1, 3)
 
         pos_delta = ((targ - pred) ** 2).sum(-1)
         neg_delta = ((targ + pred) ** 2).sum(-1)
 
-        signs = torch.ones(pos_delta.shape[0], dtype=torch.long).to(pos_delta.device)
+        signs = (torch.ones(pos_delta.shape[0],
+                            dtype=torch.long)
+                 .to(pos_delta.device))
         signs[neg_delta < pos_delta] = -1
         targ = targ * signs.reshape(-1, 1)
 
@@ -649,8 +677,7 @@ def name_to_func(name):
         "diabat_sign": build_diabat_sign_loss,
         "skewed_p": build_skewed_p_loss,
         "nacv": build_nacv_loss,
-        "nacv_outer": build_nacv_outer_loss,
-        "trans_dipole": build_trans_dip_loss,
+        'trans_dipole': build_trans_dip_loss
     }
     func = dic[name]
     return func
@@ -663,16 +690,18 @@ def get_all_losses(multi_loss_dict):
 
         # for backwards compatability
         if key in ["mse", "mae", "rmse"]:
-            loss_coef = {sub_dic["params"]["key"]: sub_dic["coef"] for sub_dic in loss_list}
+            loss_coef = {sub_dic["params"]["key"]:
+                         sub_dic["coef"] for sub_dic in loss_list}
             cutoff = {}
             for sub_dic in loss_list:
-                if "cutoff" not in sub_dic["params"]:
+                if 'cutoff' not in sub_dic["params"]:
                     continue
                 key = sub_dic["params"]["key"]
                 val = sub_dic["params"]["cutoff"]
                 cutoff[key] = val
 
-            loss_fn = build_fn(loss_coef, cutoff=cutoff)
+            loss_fn = build_fn(loss_coef,
+                               cutoff=cutoff)
             loss_fns.append(loss_fn)
             continue
 
@@ -694,5 +723,4 @@ def build_multi_loss(multi_loss_dict):
             # print(loss_fn, this_loss)
             loss += this_loss
         return loss
-
     return calc_loss
