@@ -1,4 +1,13 @@
 # Neural Force Field
+
+Dependencies 
+ase
+rdkit
+sklearn
+e3fp
+
+
+
 The Neural Force Field (NFF) code is an API based on SchNet [1-4], DimeNet [5], PaiNN [6-7], DANN [8], CHGNet [9], and MACE [10,11]. It provides an interface to train and evaluate neural networks (NNs) for force fields. It can also be used as a property predictor that uses both 3D geometries and 2D graph information [12]. NFF also allows the usage of NN ensembles to perform uncertainty quantification and adversarial sampling of geometries. The complete tutorials on how to perform such analysis is available at the [Atomistic Adversarial Attacks repository](https://github.com/learningmatter-mit/Atomistic-Adversarial-Attacks), and the theory behind this differentiable sampling strategy is available at [our paper](https://www.nature.com/articles/s41467-021-25342-8) [13].
 
 This code repository is developed in the [Learning Matter Lab](http://gomezbombarelli.mit.edu) (led by Prof. Rafael Gomez-Bombarelli) at MIT.
