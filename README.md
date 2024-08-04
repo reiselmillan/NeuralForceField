@@ -1,9 +1,13 @@
 # Neural Force Field
 
 Dependencies 
+
 ase
+
 rdkit
+
 sklearn
+
 e3fp
 
 
