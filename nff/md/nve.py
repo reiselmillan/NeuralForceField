@@ -201,7 +201,14 @@ class Dynamics:
                 self.atomsbatch.calc = calc
 
             self.integrator.increment_temperature(self.tempramp)
-            self.integrator.run(self.mdparam['nbr_list_update_freq'])
+            try:
+              self.integrator.run(self.mdparam['nbr_list_update_freq'])
+            except Exception as e:
+              print(e)
+              if self.restart_on_crash:
+                print(f"restarting from the {self.restart_from} frame. Error of the integrator")
+                self.check_restart(self.restart_from)
+
 
             # # unwrap coordinates if mol_idx is defined
             # if self.atomsbatch.props.get("mol_idx", None) :
