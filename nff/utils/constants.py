@@ -43,6 +43,8 @@ KCAL_TO_AU = {
 KB_EV = 0.0000861731
 KB_AU = 3.166815e-6
 EV_TO_AU = 1 / 27.2114
+AU_TO_EV = 27.2114
+
 INV_CM_TO_AU = 4.5564e-6
 
 # Coulomb's constant, in (kcal/mol) * (A / e^2),

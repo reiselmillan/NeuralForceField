@@ -234,16 +234,19 @@ def torch_nbr_list(atomsobject,
     print("updating nbr_list")
     xyz = torch.Tensor(atomsobject.get_positions(wrap=False)).to(device)
     dis_mat = xyz[None, :, :] - xyz[:, None, :]
+    # print(type(atomsobject.cell))
+    # print(atomsobject.cell)
+    cell_tensor = torch.Tensor(np.array(atomsobject.cell)).to(device) #make numpy first to get rid of warning 
     if any(atomsobject.pbc):
         if np.count_nonzero(atomsobject.cell.T-np.diag(np.diagonal(atomsobject.cell.T)))!=0:
             M,N=dis_mat.shape[0],dis_mat.shape[1]
-            f=torch.linalg.solve(torch.Tensor(atomsobject.cell.T).to(device),(dis_mat.view(-1,3).T)).T
+            f=torch.linalg.solve(cell_tensor.T,(dis_mat.view(-1,3).T)).T
             g=f-torch.floor(f+0.5)
-            dis_mat=torch.matmul(g,torch.Tensor(atomsobject.cell).to(device))
+            dis_mat=torch.matmul(g,  cell_tensor )
             dis_mat=dis_mat.view(M,N,3)
             offsets=-torch.floor(f+0.5).view(M,N,3)
         else:
-            cell_dim = torch.Tensor(atomsobject.get_cell()).diag().to(device)
+            cell_dim = cell_tensor.diag().to(device)
             if requires_large_offsets:
                shift = torch.round(torch.divide(dis_mat,cell_dim))
                offsets = -shift

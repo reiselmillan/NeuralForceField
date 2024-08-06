@@ -15,7 +15,9 @@ def sparsify_tensor(tensor):
 
     if len(ij) > 0:
         v = tensor[ij[:, 0], ij[:, 1]]
-        return sp.FloatTensor(ij.t(), v, tensor.size())
+        # return sp.FloatTensor(ij.t(), v, tensor.size())
+        return torch.sparse_coo_tensor(ij.t(), v, tensor.size(), dtype=torch.float)
+
     else:
         return 0
 

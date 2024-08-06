@@ -632,7 +632,7 @@ class PrintingHook(LoggingHook):
                 log += self._separator
 
             if self.log_memory:
-                memory = torch.cuda.max_memory_allocated(device=None) * 1e-6
+                memory = torch.cuda.max_memory_allocated(device=None) / 1024**2
                 log += self.str_format.format(
                     len(self._headers['memory']),
                     '%d' % memory

@@ -10,8 +10,11 @@ from nff.md.npt import NoseHoovernpt
 from ase.io import Trajectory, iread
 from ase.io import write as asewrite
 from nff.nn.utils import exploded
-
 from nff.md.utils import NeuralMDLogger, write_traj
+from nff.io.ase import CP2K
+from cytigre import Frame
+from cytigre.io import write_frame as write_frame_tigre
+import copy
 
 DEFAULTNVEPARAMS = {
     'T_init': 120.0,
@@ -26,7 +29,6 @@ DEFAULTNVEPARAMS = {
     'traj_filename': './atoms.traj',
     'skip': 0
 }
-
 
 class Dynamics:
 
@@ -105,14 +107,7 @@ class Dynamics:
 
     def check_restart(self, nframe=-1):
         if os.path.exists(self.mdparam['traj_filename']):
-            # new_atoms = Trajectory(self.mdparam['traj_filename'])[-1]
-
-            # calculate number of steps remaining
-            # self.steps = ( int(self.mdparam['steps'])
-            #     - ( int(self.mdparam['save_frequency']) *
-            #     len(Trajectory(self.mdparam['traj_filename'])) ) )
-
-            # get last atom
+            # get last atoms
             traj = iread(self.mdparam['traj_filename'])
             new_atoms = None
             for n, atoms in enumerate(traj):
@@ -190,12 +185,21 @@ class Dynamics:
         # for example, it's good to update the neighbor list here
         self.atomsbatch.update_nbr_list()
         print("NVE loop steps: ", epochs)
+        mlcalc = copy.deepcopy(self.atomsbatch.calc)
         for step in range(epochs):
             if time.time() - self.init_time >= self.max_time:
                 return
             if self.stop:
                 return
             
+            print("step  ", step, " steps: ", epochs, " nvt steps: ", self.mdparam["nbr_list_update_freq"])
+            
+            # if exploded(self.atomsbatch, 0.7):
+            if step > 0 and step % 10 == 0:
+                print("setting calc cp2k ", step)
+                calc = CP2K()
+                self.atomsbatch.calc = calc
+
             self.integrator.increment_temperature(self.tempramp)
             self.integrator.run(self.mdparam['nbr_list_update_freq'])
 
@@ -204,6 +208,7 @@ class Dynamics:
             #     self.atomsbatch.set_positions(self.atoms.get_positions(wrap=True))
             #     self.atomsbatch.set_positions(reconstruct_atoms(atoms, self.atomsbatch.props['mol_idx']))
             self.atomsbatch.update_nbr_list()
+            self.atomsbatch.calc = mlcalc
 
         #self.traj.close()
 
@@ -219,10 +224,12 @@ class Dynamics:
             self.integrator.stop = True
             sys.exit(0)
 
-        asewrite(self.mdparam['traj_filename'], self.atomsbatch, append=True)
-        with open("UNCERTAINTIES.dat", "a") as f:
-            # uncertainty in kcal
-            f.write(f"{self.atomsbatch.results['forces_std'].mean()*23.06}\n") 
+        # asewrite(self.mdparam['traj_filename'], self.atomsbatch, append=True)
+        write_frame_tigre(self.mdparam['traj_filename'], Frame.from_ase_atoms(self.atomsbatch), "a")
+        if hasattr(self.atomsbatch, "results") and "forces_std" in self.atomsbatch.results:
+            with open("UNCERTAINTIES.dat", "a") as f:
+                # uncertainty in kcal
+                f.write(f"{self.atomsbatch.results['forces_std'].mean()*23.06}\n") 
     
     def write_cv(self):
         self.atomsbatch.calc.write(self.atomsbatch)

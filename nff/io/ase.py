@@ -579,6 +579,82 @@ class BulkPhaseMaterials(Atoms):
         self.update_system_nbr_list(self.props['system_cutoff'])
 
 
+class CP2K(Calculator):
+    implemented_properties = ["energy", "forces"]
+    def __init__(self, properties=["energy", "forces"] ,**kwargs):
+        self.properties = properties
+        self.calc = None
+        self.rootdir = os.getcwd()
+        self.calcdir = os.path.join(self.rootdir, "cp2kwd")
+        self.setup()
+        Calculator.__init__(self, **kwargs)
+
+
+    def get_en_forces(self, output_file, natoms):
+        en = None
+        forces = []
+
+        normal_end = False
+        with open(output_file) as f:
+            for line in f:
+                if "- Atoms:" in line:
+                    natoms = int(line.split()[-1])
+                
+                if 'ENERGY|' in line:
+                    en = float(line.split()[-1])
+            
+                if line.startswith(" ATOMIC FORCES"):
+                    forces = []
+                    f.readline(); f.readline()  # skip the two next lines
+                    for _ in range(natoms):
+                        fline = f.readline()
+                        forcei = [float(i) for i in fline.split()[-3:]]
+                        forces.append(forcei)
+                if "PROGRAM ENDED AT" in line:
+                    normal_end = True
+        # to eV
+        forces = np.array(forces)
+        return en, forces
+
+    def setup(self):
+        from pycp2k import CP2K
+        self.calc = CP2K()
+        if not os.path.isdir(self.calcdir):
+            os.mkdir(self.calcdir)
+        os.chdir(self.calcdir)
+        
+        self.calc.working_directory = "./"
+        self.calc.project_name = "scf_"
+        self.calc.mpi_n_processes = 32
+
+        #================= An existing input file can be parsed  =======================
+        self.calc.parse("cp2k.inp")
+        os.chdir(self.rootdir)
+
+
+    def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
+        if getattr(self, "properties", None) is None:
+            self.properties = properties
+
+        #==================== Define shortcuts for easy access =========================
+        os.chdir(self.calcdir)
+        CP2K_INPUT = self.calc.CP2K_INPUT
+        # GLOBAL = CP2K_INPUT.GLOBAL
+        FORCE_EVAL = CP2K_INPUT.FORCE_EVAL_list[-1]  # Repeatable items have to be first created
+        SUBSYS = FORCE_EVAL.SUBSYS
+        self.calc.create_cell(SUBSYS, atoms)
+        self.calc.create_coord(SUBSYS, atoms)
+
+        #============ Run the simulation or just write the input file ================
+        self.calc.write_input_file()
+        self.calc.run()
+        en, forces = self.get_en_forces("scf_.out", len(atoms))
+        # print(en, forces)
+        os.chdir(self.rootdir)
+
+        self.results["energy"] = en * const.AU_TO_EV
+        self.results["forces"] = forces * const.AU_TO_EV / const.BOHR_RADIUS 
+
 class TorchCalc(Calculator):
     implemented_properties = ["energy", "forces"]
     def __init__(self, model, device="cpu", properties=["energy", "forces"] ,**kwargs):
