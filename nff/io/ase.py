@@ -581,9 +581,10 @@ class BulkPhaseMaterials(Atoms):
 
 class CP2K(Calculator):
     implemented_properties = ["energy", "forces"]
-    def __init__(self, properties=["energy", "forces"] ,**kwargs):
+    def __init__(self, nprocs=32, properties=["energy", "forces"] ,**kwargs):
         self.properties = properties
         self.calc = None
+        self.nprocs = nprocs
         self.rootdir = os.getcwd()
         self.calcdir = os.path.join(self.rootdir, "cp2kwd")
         self.setup()
@@ -619,6 +620,10 @@ class CP2K(Calculator):
     def setup(self):
         from pycp2k import CP2K
         self.calc = CP2K()
+        self.calc.mpi_on=True
+        self.calc.mpi_command = "module purge && module load cesga/2022 gcc/system openmpi/4.1.4 cp2k/2023.1 ; mpirun"
+        self.calc.mpi_n_processes = self.nprocs
+
         if not os.path.isdir(self.calcdir):
             os.mkdir(self.calcdir)
         os.chdir(self.calcdir)
@@ -635,6 +640,7 @@ class CP2K(Calculator):
     def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
         if getattr(self, "properties", None) is None:
             self.properties = properties
+        print("DFT calculate called")
 
         #==================== Define shortcuts for easy access =========================
         os.chdir(self.calcdir)
@@ -898,6 +904,7 @@ class EnsembleNFF(Calculator):
         properties (list of str): 'energy', 'forces' or both
         system_changes (default from ase)
         """
+        print("calculate called")
 
         for model in self.models:
             if not any([isinstance(model, i) for i in UNDIRECTED]):
