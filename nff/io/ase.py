@@ -590,7 +590,6 @@ class CP2K(Calculator):
         self.setup()
         Calculator.__init__(self, **kwargs)
 
-
     def get_en_forces(self, output_file, natoms):
         en = None
         forces = []
@@ -617,6 +616,11 @@ class CP2K(Calculator):
         forces = np.array(forces)
         return en, forces
 
+    def sub_Po_for_Cu(self, atoms):
+        nas = [i if i != 84 else 29 for i in atoms.get_atomic_numbers() ]
+        atoms.set_atomic_numbers(nas)
+        return atoms
+
     def setup(self):
         from pycp2k import CP2K
         self.calc = CP2K()
@@ -630,7 +634,6 @@ class CP2K(Calculator):
         
         self.calc.working_directory = "./"
         self.calc.project_name = "scf_"
-        self.calc.mpi_n_processes = 32
 
         #================= An existing input file can be parsed  =======================
         self.calc.parse("cp2k.inp")
@@ -641,6 +644,8 @@ class CP2K(Calculator):
         if getattr(self, "properties", None) is None:
             self.properties = properties
         print("DFT calculate called")
+        # update the substitution
+        atoms = self.sub_Po_for_Cu(atoms)
 
         #==================== Define shortcuts for easy access =========================
         os.chdir(self.calcdir)
