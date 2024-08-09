@@ -643,7 +643,7 @@ class CP2K(Calculator):
     def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
         if getattr(self, "properties", None) is None:
             self.properties = properties
-        print("DFT calculate called")
+        # print("DFT calculate called")
         # update the substitution
         atoms = self.sub_Po_for_Cu(atoms)
 
@@ -909,7 +909,7 @@ class EnsembleNFF(Calculator):
         properties (list of str): 'energy', 'forces' or both
         system_changes (default from ase)
         """
-        print("calculate called")
+        # print("calculate called")
 
         for model in self.models:
             if not any([isinstance(model, i) for i in UNDIRECTED]):
