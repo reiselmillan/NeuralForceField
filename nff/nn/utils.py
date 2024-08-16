@@ -198,9 +198,9 @@ def numpy_nbr_list(atomsobject,
 
 def exploded(atoms, cutoff):
     if np.any(np.isnan(atoms.positions)):
-        return True
+        return 1
     if np.any(np.isinf(atoms.positions)):
-        return True
+        return 2
     
     cutoff2 = cutoff*cutoff
     xyz = atoms.get_positions(wrap=True)
@@ -208,7 +208,12 @@ def exploded(atoms, cutoff):
     dis_sq = (dis_mat*dis_mat).sum(-1)
     np.fill_diagonal(dis_sq, cutoff2+1.0) # diagonal elements are the same atom, exclude them
     mask = (dis_sq <= cutoff2)
-    return np.any(mask)
+    if np.any(mask):
+        return 4
+    return 0
+
+def check_exploded(atoms, cutoff):
+    return exploded(atoms, cutoff)
         
 
 def torch_nbr_list(atomsobject,
