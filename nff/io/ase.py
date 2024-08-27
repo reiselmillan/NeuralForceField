@@ -28,7 +28,7 @@ from nff.data import collate_dicts
 
 from torch.autograd import grad
 
-from .restraints import HarmonicRestraint
+from .restraints import HarmonicRestraint, HarmonicRestraintStatic
 
 DEFAULT_CUTOFF = 5.0
 DEFAULT_DIRECTED = False
@@ -793,6 +793,28 @@ class TorchNeuralRestraint(TorchCalc):
         forces = self.results["forces"]
         energy = self.results["energy"]
         return energy, forces
+
+
+class TorchRestraintStatic(TorchCalc):
+    implemented_properties = ["energy", "forces"]
+    def __init__(self, cvdic, model, device="cpu", properties=["energy", "forces"],**kwargs):
+        TorchCalc.__init__(self, model, device, properties=properties, **kwargs)
+        self.hr =  HarmonicRestraintStatic(cvdic, device)
+
+    def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
+        if np.any(np.isnan(atoms.positions)):
+            print("System exploded. Stoping")
+            sys.exit(1)
+
+        TorchCalc.calculate(self, atoms, properties, all_changes=all_changes)
+        bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device))         
+        self.results["energy"] += bias_energy.detach().cpu().numpy()
+        self.results["forces"] += bias_forces.detach().cpu().numpy() 
+
+    def get_en_forces(self, frame, step):
+        atoms = frame.as_ase_atoms()
+        self.calculate(atoms, step)
+        return self.results["energy"], self.results["forces"]
 
 
 class NeuralFF(Calculator):

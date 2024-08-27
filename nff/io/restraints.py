@@ -1,6 +1,71 @@
 import torch
 from torch.autograd import grad
 from nff.io.colvars import get_cv_from_dic
+from ase.calculators.calculator import Calculator, all_changes
+
+
+class HarmonicRestraintStatic:
+    def __init__(self, cvdic, device="cpu") -> None:
+        self.cvs = [] # list of collective variables (CV) objects
+        self.kappas = []  # list of constant values for every CV
+        self.eq_values = [] # list equilibrium values for every CV
+        self.device = device
+        self.results = {}
+        self.setup(cvdic, device)
+
+    def setup(self, cvdic, device):       
+        """ Initializes the collectiva variables objects
+        Args:
+            cvdic (dict): Dictionary contains the information to define the collective variables
+                          and the harmonic restraint.
+            max_steps (int): maximum number of steps of the MD simulation
+            device: device
+        """
+        for _ , val in cvdic.items():
+            cv = get_cv_from_dic(val, device)
+            self.cvs.append(cv)
+            self.kappas.append(val["restraint"]["kappa"])
+            self.eq_values.append(val["restraint"]["eq_val"])
+
+    def get_energy(self, positions):
+        """ Calculates the retraint energy of an arbritrary state of the system
+        Args:
+            positions (torch.tensor): atomic positions
+            step (int): current step
+        Returns:
+            float: energy
+        """
+        tot_energy = 0
+        for n, cv in enumerate(self.cvs):
+            kappa = self.kappas[n]
+            eq_val = self.eq_values[n]
+            cv_value = cv.get_value(positions)
+            energy = 0.5 * kappa * (cv_value - eq_val) * (cv_value - eq_val)
+            tot_energy += energy
+        return tot_energy
+
+    def get_bias(self, positions):
+        """ Calculates the bias energy and force
+
+        Args:
+            positions (torch.tensor): atomic positions
+            step (int): current step
+
+        Returns:
+            float: forces
+            float: energy
+        """
+        energy = self.get_energy(positions)
+        forces = -grad(energy, positions)[0]
+        return forces, energy
+    
+    # ase interface
+    def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
+        forces, energy = self.get_bias(torch.tensor(atoms.positions, 
+                                                requires_grad=True, 
+                                                device=self.device))
+        self.results["forces"] = forces.detach().cpu().numpy()
+        self.results["energy"] = energy.detach().cpu().numpy()
 
 
 class HarmonicRestraint:
