@@ -134,7 +134,8 @@ class HarmonicRestraint:
             eq_vals += [restraint_list[n]['eq_val'] + cvstep * tind for tind, _ in enumerate(templist)]
 
         # in case the last step is lesser than the max_step
-        templist = list(range(restraint_list[-1]['step'], max_steps))
+        templist = list(range(restraint_list[-1]['step'], max_steps+2)) # plus one just in case 
+        # print(templist)
         steps += templist
         kappas += [restraint_list[-1]['kappa'] for _ in templist]
         eq_vals += [restraint_list[-1]['eq_val'] for _ in templist]
@@ -151,6 +152,11 @@ class HarmonicRestraint:
         """
         tot_energy = 0
         for n, cv in enumerate(self.cvs):
+            if step in cv.update_steps:
+                cv.update_idx(positions)
+            # print("cv step: ", step, len(self.kappas[n]))
+            if step >= len(self.kappas[n]):
+                step = -1
             kappa = self.kappas[n][step]
             eq_val = self.eq_values[n][step]
             cv_value = cv.get_value(positions)
@@ -160,7 +166,6 @@ class HarmonicRestraint:
 
     def get_bias(self, positions, step):
         """ Calculates the bias energy and force
-
         Args:
             positions (torch.tensor): atomic positions
             step (int): current step

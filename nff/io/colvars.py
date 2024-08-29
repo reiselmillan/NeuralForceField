@@ -2,31 +2,12 @@
 import torch
 import numpy as np
 
-def get_cv_from_dic(val, device="cpu"):
-    if val["type"].lower() == "pvp":
-        mol_inds = val["mol_idx"]  # caution check type
-        ring_inds = val["ring_idx"]
-        cv = ProjVectorPlane(mol_inds, ring_inds)
-    elif val["type"].lower() == "pvv":
-        mol_inds = val["mol_idx"]
-        reference = val['ref_idx']
-        vector = val["vector"]
-        cv = ProjVectorVector(vector, mol_inds, reference, device=device) # z components
-    elif val["type"].lower() == "proj_ortho_vectors_plane":
-        mol_inds = [i-1 for i in val["mol_idx"]]  # caution check type
-        ring_inds = [i-1 for i in val["ring_idx"]]
-        cv = ProjOrthoVectorsPlane(mol_inds, ring_inds) # z components
-    elif val["type"].lower() == "torsion":
-        cv = Dihedral(val["idx"], device)
-    elif val["type"].lower() == "distance":
-        cv = Distance(val["idx"], device)
-    elif val["type"].lower() in ["center_wall", "wall_center"]:
-        cv = CenterCageWall(val["mol_idx"], val["center_idx"], val["radius"], device=device)
-    elif val["type"].lower() in ["diff_distance2"]:
-        cv = DiffDistance2(val["idx"], device)
-    else:
-        raise TypeError("Bad CV type")
-    return cv
+class CVBase:
+    def __init__(self, update_steps=[], **kwargs) -> None:
+        self.update_steps = update_steps
+
+    def update_idx(self, *args, **kwargs):
+        pass
 
 
 class CenterCageWall:
@@ -87,27 +68,23 @@ class ProjVectorVector:
         cv = torch.dot(rel_mol_pos.to(torch.float32), self.vector.to(torch.float32))
         return cv
 
-class ProjVectorCentroid2:
+class ProjVectorCentroid:
     """
     Collective variable class. Projection of a position vector onto a reference vector
     Atomic indices are used to determine the coordiantes of the vectors.
     Params
     ------
-    vector: list of int
-       List of the indices of atoms that define the vector on which the position vector is projected
-    indices: list if int
-       List of indices of the mol/fragment
-    reference: list of int
-       List of atomic indices that are used as reference for the position vector
-
     note: the position vector is calculated in the method get_value
     """
-    def __init__(self, vector=[], indices=[], reference=[], device='cpu'):
-        self.vector_inds = vector
-        self.mol_inds = torch.LongTensor(indices)
-        self.reference_inds = reference
+    def __init__(self, refvecidx, idx, refcenteridx, abs=False, device='cpu', **kargs):
+        self.vector_inds = torch.LongTensor(refvecidx)
+        self.mol_inds = torch.LongTensor(idx)
+        self.reference_inds = torch.LongTensor(refcenteridx)
+        self.abs = abs
+        print("INIT PVC: ")
+        print(self.vector_inds, self.mol_inds, self.reference_inds, self.abs)
 
-    def get_value(self, positions):
+    def get_value(self, positions): 
         vector_pos = positions[self.vector_inds]
         vector = vector_pos[1] - vector_pos[0]
         vector = vector / torch.linalg.norm(vector)
@@ -121,6 +98,8 @@ class ProjVectorCentroid2:
 
         # projection
         cv = torch.dot(rel_mol_pos, vector)
+        if self.abs:
+            cv = abs(cv)
         return cv
 
 
@@ -138,9 +117,10 @@ class ProjVectorPlane:
 
     note: the position vector is calculated in the method get_value
     """
-    def __init__(self, mol_inds = [], ring_inds = []):
+    def __init__(self, mol_inds = [], ring_inds = [], isabs=False):
         self.mol_inds = torch.LongTensor(mol_inds) # list of indices
         self.ring_inds = torch.LongTensor(ring_inds) # list of indices
+        self.abs = isabs
         # both self.mol_coors and self.ring_coors torch tensors with atomic coordinates
         # initiallized as list but will be set to torch tensors with set_positions
         self.mol_coors = []
@@ -185,6 +165,8 @@ class ProjVectorPlane:
         pos_vec = mol_cm - ring_cm
 
         cv = torch.dot(pos_vec, plane_vec)
+        if self.abs:
+            cv = abs(cv)
         return cv
 
 
@@ -255,15 +237,44 @@ class ProjOrthoVectorsPlane:
         return abs(cv)
 
 
-class Distance:
-    def __init__(self, idx=[], device="cpu"):
-        self.idx = idx
+class Distance(CVBase):
+    def __init__(self, at1, at2, device="cpu", 
+                update_at1=[], 
+                update_at2=[], 
+                update_steps = [], **kwargs):
+        self.at1 = at1
+        self.at2 = at2
         self.device = device
+        self.update1 = update_at1
+        self.update2 = update_at2
+        super().__init__(update_steps, **kwargs)
 
     def get_value(self, positions):
-        d = positions[self.idx[0]] - positions[self.idx[1]]
+        d = positions[self.at1] - positions[self.at2]
         d2 = d*d
         return torch.sqrt(d2.sum())
+    
+    def update_idx(self, positions):
+        print("Updating idx for class Distance")
+        
+        currd2 = positions[self.at1] - positions[self.at2]
+        currd2 = (currd2*currd2).sum()
+        for ui in self.update1:
+            d = positions[ui] - positions[self.at2]
+            d2 = (d*d).sum()
+            if d2 < currd2:
+                self.at1 = ui
+                currd2 = d2
+
+        currd2 = positions[self.at1] - positions[self.at2]
+        currd2 = (currd2*currd2).sum()
+        for ui in self.update2:
+            d = positions[ui] - positions[self.at1]
+            d2 = (d*d).sum()
+            if d2 < currd2:
+                self.at2 = ui
+                currd2 = d2   
+        print(f"new atom1 {self.at1}  atom2 {self.at2}")  
 
 
 class DiffDistance2:
@@ -316,3 +327,34 @@ class Dihedral:
 
       ang = 180.0 / torch.pi * torch.arctan2(y, x)
       return ang
+
+cvtypes = {
+    "pvc": ProjVectorCentroid,
+    "distance": Distance
+}
+
+def get_cv_from_dic(val, device="cpu"):
+    if val["type"].lower() == "pvp":
+        mol_inds = val["mol_idx"]  # caution check type
+        ring_inds = val["ring_idx"]
+        isabs = val.get("abs", False)
+        cv = ProjVectorPlane(mol_inds, ring_inds, isabs)
+    elif val["type"].lower() == "pvv":
+        mol_inds = val["mol_idx"]
+        reference = val['ref_idx']
+        vector = val["vector"]
+        cv = ProjVectorVector(vector, mol_inds, reference, device=device) # z components
+    elif val["type"].lower() == "proj_ortho_vectors_plane":
+        mol_inds = [i-1 for i in val["mol_idx"]]  # caution check type
+        ring_inds = [i-1 for i in val["ring_idx"]]
+        cv = ProjOrthoVectorsPlane(mol_inds, ring_inds) # z components
+    elif val["type"].lower() == "torsion":
+        cv = Dihedral(val["idx"], device)
+    elif val["type"].lower() in ["center_wall", "wall_center"]:
+        cv = CenterCageWall(val["mol_idx"], val["center_idx"], val["radius"], device=device)
+    elif val["type"].lower() in ["diff_distance2"]:
+        cv = DiffDistance2(val["idx"], device)
+    else:
+        return cvtypes[val["type"]](**val)
+        raise TypeError("Bad CV type")
+    return cv

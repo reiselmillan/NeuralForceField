@@ -762,7 +762,11 @@ class TorchNeuralRestraint(TorchCalc):
 
     def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
         TorchCalc.calculate(self, atoms, properties, all_changes=all_changes)
-        bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device), self.step)         
+        try:
+            bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device), self.step)         
+        except:
+            print("error in step : ", self.step)
+            quit()
         self.results["energy"] += bias_energy.detach().cpu().numpy()
         self.results["forces"] += bias_forces.detach().cpu().numpy() 
 
@@ -770,9 +774,10 @@ class TorchNeuralRestraint(TorchCalc):
 
     def write(self, atoms):
         self.step += 1
+
         with open("colvar", "a") as f:
             # f.write("{} ".format(self.step*0.5))
-            f.write("{} ".format(self.step * 0.5))
+            f.write("{} ".format(self.step))
             # ARREGLAR, SI YA ESTA CALCULADO PARA QUE RECALCULAR LA CVS
             for cv in self.hr.cvs:
                 curr_cv_val = float(cv.get_value(torch.tensor(atoms.get_positions(), device=self.device)))
