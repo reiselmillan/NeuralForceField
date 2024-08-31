@@ -103,7 +103,7 @@ class ProjVectorCentroid:
         return cv
 
 
-class ProjVectorPlane:
+class ProjVectorPlane(CVBase):
     """
     Collective variable class. Projection of a position vector onto a the average plane
     of an arbitrary ring defined in the structure
@@ -117,14 +117,15 @@ class ProjVectorPlane:
 
     note: the position vector is calculated in the method get_value
     """
-    def __init__(self, mol_inds = [], ring_inds = [], isabs=False):
-        self.mol_inds = torch.LongTensor(mol_inds) # list of indices
-        self.ring_inds = torch.LongTensor(ring_inds) # list of indices
+    def __init__(self, mol_idx = [], ring_idx = [], update_steps=[], isabs=False, **kwargs):
+        self.mol_inds = torch.LongTensor(mol_idx) # list of indices
+        self.ring_inds = torch.LongTensor(ring_idx) # list of indices
         self.abs = isabs
         # both self.mol_coors and self.ring_coors torch tensors with atomic coordinates
         # initiallized as list but will be set to torch tensors with set_positions
         self.mol_coors = []
         self.ring_coors = []
+        super().__init__(update_steps, **kwargs)
 
     def set_positions(self, positions):
         # update coordinate torch tensors from the positions tensor
@@ -330,16 +331,12 @@ class Dihedral:
 
 cvtypes = {
     "pvc": ProjVectorCentroid,
-    "distance": Distance
+    "distance": Distance,
+    "pvp": ProjVectorPlane
 }
 
 def get_cv_from_dic(val, device="cpu"):
-    if val["type"].lower() == "pvp":
-        mol_inds = val["mol_idx"]  # caution check type
-        ring_inds = val["ring_idx"]
-        isabs = val.get("abs", False)
-        cv = ProjVectorPlane(mol_inds, ring_inds, isabs)
-    elif val["type"].lower() == "pvv":
+    if val["type"].lower() == "pvv":
         mol_inds = val["mol_idx"]
         reference = val['ref_idx']
         vector = val["vector"]

@@ -762,11 +762,11 @@ class TorchNeuralRestraint(TorchCalc):
 
     def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
         TorchCalc.calculate(self, atoms, properties, all_changes=all_changes)
-        try:
-            bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device), self.step)         
-        except:
-            print("error in step : ", self.step)
-            quit()
+        #try:
+        bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device), self.step)         
+        #except:
+        #    print("error in step : ", self.step)
+        #    quit()
         self.results["energy"] += bias_energy.detach().cpu().numpy()
         self.results["forces"] += bias_forces.detach().cpu().numpy() 
 
