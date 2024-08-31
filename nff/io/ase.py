@@ -1133,6 +1133,27 @@ class EnsembleNFF(Calculator):
         return cls(models, device, **kwargs)
 
 
+class TorchNeuralRestraintEnsemble(TorchNeuralRestraint, EnsembleNFF):
+    implemented_properties = ["energy", "forces"]
+    def __init__(self, cv, max_steps, models, device="cpu", properties=["energy", "forces"], **kwargs):
+        EnsembleNFF.__init__(self, models, device, properties=properties, **kwargs)
+        # TorchNeuralRestraint.__init__(self, cv, max_steps, models[0], device)
+        self.hr = HarmonicRestraint(cv, max_steps, device)
+        self.step = -1
+        self.max_steps = max_steps
+        self.bias_energy = 0
+
+    def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
+        EnsembleNFF.calculate(self, atoms, properties)
+        bias_forces, bias_energy = self.hr.get_bias(torch.tensor(atoms.get_positions(), requires_grad=True, device=self.device), self.step)         
+        self.results["energy"] += bias_energy.detach().cpu().numpy()
+        self.results["forces"] += bias_forces.detach().cpu().numpy() 
+
+        self.bias_energy = bias_energy
+        print("setting resutls")
+        atoms.results = self.results.copy()
+
+
 class NeuralOptimizer:
     def __init__(
             self,
