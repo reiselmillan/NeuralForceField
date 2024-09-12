@@ -1235,6 +1235,28 @@ class MeanPool(nn.Module):
         return results
 
 
+class IdentityPool(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self,
+                batch,
+                xyz,
+                r_ij,
+                nbrs,
+                atomwise_output,
+                grad_keys,
+                out_keys=None):
+
+        results = {}
+        for key, val in atomwise_output.items():
+            if key not in out_keys:
+                continue
+            
+            results[key] = val
+        return results
+    
+
 def att_readout_probs(name):
     if name.lower() == "softmax":
         def func(output):
