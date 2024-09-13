@@ -135,6 +135,17 @@ class Dataset(TorchDataset):
         self.props = new_props
 
         return copy.deepcopy(self)
+    
+    def delete(self, idx:list):
+        keys = list(self.props.keys())
+        newprops = dict([(k, []) for k in keys])
+        for key in keys:
+            for n, val in enumerate(self.props[key]):
+                if n in idx:
+                    continue
+                newprops[key].append(val)
+        self._check_dictionary(newprops)
+        self.props = newprops
 
     def _check_dictionary(self, props):
         """Check the dictionary or properties to see if it has the
