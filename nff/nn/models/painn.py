@@ -43,6 +43,7 @@ class Painn(nn.Module):
         means = modelparams.get("means")
         stddevs = modelparams.get("stddevs")
         pool_dic = modelparams.get("pool_dic")
+        num_readouts = modelparams.get("num_readouts", 1)
 
         self.excl_vol = modelparams.get("excl_vol", False)
         if self.excl_vol:
@@ -73,7 +74,7 @@ class Painn(nn.Module):
                                     {key: False for key
                                      in self.output_keys})
 
-        num_readouts = num_conv if any(self.skip.values()) else 1
+        # num_readouts = num_conv if any(self.skip.values()) else 1
         self.readout_blocks = nn.ModuleList(
             [ReadoutBlock(feat_dim=feat_dim,
                           output_keys=output_keys,
@@ -98,7 +99,7 @@ class Painn(nn.Module):
 
         self.compute_delta = modelparams.get("compute_delta", False)
         self.cutoff = cutoff
-        self.nelect_layer = nn.Linear(feat_dim, 1)
+        self.charge_layer = nn.Linear(feat_dim, 1)
         self.shilding_layer = nn.Linear(feat_dim, 9)
 
     def set_cutoff(self):
@@ -181,22 +182,20 @@ class Painn(nn.Module):
 
         results['features'] = s_i
 
-        if "n_elec" in self.output_keys:
-            results["n_elec"] = self.nelect_layer(s_i)
-
-        # nmr
+        if "charge" in self.output_keys:
+            results["charnge"] = self.charge_layer(s_i)
         if "shielding_tensor" in self.output_keys:
             results["shielding_tensor"] = self.shilding_layer(s_i)
 
         return results, xyz, r_ij, nbrs
 
     def pool(self,
-             batch,
-             atomwise_out,
-             xyz,
-             r_ij,
-             nbrs,
-             inference=False):
+            batch,
+            atomwise_out,
+            xyz,
+            r_ij,
+            nbrs,
+            inference=False):
 
         # import here to avoid circular imports
         from nff.train import batch_detach
