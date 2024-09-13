@@ -6,7 +6,7 @@ from nff.nn.modules.painn import (MessageBlock, UpdateBlock,
                                   EmbeddingBlock, ReadoutBlock,
                                   TransformerMessageBlock,
                                   NbrEmbeddingBlock)
-from nff.nn.modules.schnet import (AttentionPool, SumPool, MolFpPool,
+from nff.nn.modules.schnet import (AttentionPool, SumPool, MolFpPool, IdentityPool,
                                    MeanPool, get_rij, add_stress)
 from nff.nn.modules.diabat import DiabaticReadout, AdiabaticReadout
 from nff.nn.layers import (Diagonalize, ExpNormalBasis)
@@ -15,7 +15,9 @@ from nff.utils.scatter import scatter_add
 POOL_DIC = {"sum": SumPool,
             "mean": MeanPool,
             "attention": AttentionPool,
-            "mol_fp": MolFpPool}
+            "mol_fp": MolFpPool,
+            "identity": IdentityPool}
+
 
 
 class Painn(nn.Module):
@@ -25,9 +27,6 @@ class Painn(nn.Module):
         """
         Args:
             modelparams (dict): dictionary of model parameters
-
-
-
         """
 
         super().__init__()
@@ -84,7 +83,6 @@ class Painn(nn.Module):
                           stddevs=stddevs)
              for _ in range(num_readouts)]
         )
-
         if pool_dic is None:
             self.pool_dic = {key: SumPool() for key
                              in self.output_keys}
@@ -94,12 +92,14 @@ class Painn(nn.Module):
                 if out_key not in self.output_keys:
                     continue
                 pool_name = sub_dic["name"].lower()
-                kwargs = sub_dic["param"]
+                kwargs = sub_dic.get("param", {})
                 pool_class = POOL_DIC[pool_name]
                 self.pool_dic[out_key] = pool_class(**kwargs)
 
         self.compute_delta = modelparams.get("compute_delta", False)
         self.cutoff = cutoff
+        self.nelect_layer = nn.Linear(feat_dim, 1)
+        self.shilding_layer = nn.Linear(feat_dim, 9)
 
     def set_cutoff(self):
         if hasattr(self, "cutoff"):
@@ -180,6 +180,13 @@ class Painn(nn.Module):
                     results[key] = new_results[key]
 
         results['features'] = s_i
+
+        if "n_elec" in self.output_keys:
+            results["n_elec"] = self.nelect_layer(s_i)
+
+        # nmr
+        if "shielding_tensor" in self.output_keys:
+            results["shielding_tensor"] = self.shilding_layer(s_i)
 
         return results, xyz, r_ij, nbrs
 
