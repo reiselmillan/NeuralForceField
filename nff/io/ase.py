@@ -1135,7 +1135,7 @@ class EnsembleNFF(Calculator):
 
 class TorchNeuralRestraintEnsemble(TorchNeuralRestraint, EnsembleNFF):
     implemented_properties = ["energy", "forces"]
-    def __init__(self, cv, max_steps, models, device="cpu", properties=["energy", "forces"], **kwargs):
+    def __init__(self, models, cv, max_steps, device="cpu", properties=["energy", "forces"], **kwargs):
         EnsembleNFF.__init__(self, models, device, properties=properties, **kwargs)
         # TorchNeuralRestraint.__init__(self, cv, max_steps, models[0], device)
         self.hr = HarmonicRestraint(cv, max_steps, device)

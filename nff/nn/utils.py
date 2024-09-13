@@ -236,7 +236,7 @@ def torch_nbr_list(atomsobject,
     Returns:
         i, j, cutoff: just like ase.neighborlist.neighbor_list
     """
-    print("updating nbr_list")
+    #print("updating nbr_list")
     xyz = torch.Tensor(atomsobject.get_positions(wrap=False)).to(device)
     dis_mat = xyz[None, :, :] - xyz[:, None, :]
     # print(type(atomsobject.cell))
