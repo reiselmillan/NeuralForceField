@@ -611,7 +611,182 @@ class Dataset(TorchDataset):
             raise TypeError(
                 '{} is not an instance from {}'.format(path, type(cls))
             )
+        
+    def plot_energy(self):
+        from matplotlib import pyplot as plt
+        plt.plot(self.props["energy"])
+        plt.show()
 
+    def plot_energy_grad(self, show=True, **kwargs):
+        from matplotlib import pyplot as plt
+        fs = []
+        for f in self.props["energy_grad"]:
+            fs += f.flatten().tolist()
+        plt.plot(fs, **kwargs)
+        if show:
+            plt.show()
+
+    def plot_energy_geom(self):
+        from matplotlib import pyplot as plt
+        if "geom_id" not in self.props:
+            return
+        plt.scatter(self.props["geom_id"], self.prop["energy"])
+        plt.show()
+
+    def high_energies_geom(self, cutoff):
+        if "geom_id" not in self.props:
+            return
+        return [n  for n, e in zip(self.props["geom_id"], self.props["energy"]) if e > cutoff]
+
+    def low_energies_geom(self, cutoff):
+        if "geom_id" not in self.props:
+            return
+        return [n  for n, e in zip(self.props["geom_id"], self.props["energy"]) if e < cutoff]
+
+    def high_energies_idx(self, cutoff):
+        return [n  for n, e in enumerate(self.props["energy"]) if e > cutoff]
+    
+    def low_energies_idx(self, cutoff):
+        return [n  for n, e in enumerate(self.props["energy"]) if e < cutoff]
+
+    def high_abs_grads_geom(self, cutoff):
+        if "geom_id" not in self.props:
+            return
+        return [n  for n, e in zip(self.props["geom_id"], self.props["energy_grad"]) if np.any((abs(e) > cutoff).tolist())]
+
+    def high_abs_grads_idx(self, cutoff):
+        return [n  for n, e in enumerate(self.props["energy_grad"]) if np.any((abs(e) > cutoff).tolist())] 
+
+    def delete_high_energy(self, cutoff):
+        idx = self.high_energies_idx(cutoff)
+        self.delete(idx)
+
+    def delete_low_energy(self, cutoff):
+        idx = self.low_energies_idx(cutoff)
+        self.delete(idx)
+
+    def delete_high_abs_grads(self, cutoff):
+        idx = self.high_abs_grads_idx(cutoff)
+        self.delete(idx)
+
+    def cluster_energy(self, eps=1.0):
+        from sklearn.cluster import DBSCAN
+        # ms = MeanShift()
+        cluster = DBSCAN(eps=eps)
+        cluster.fit(np.array(self.props["energy"]).reshape(-1, 1))
+        return cluster, np.array(self.props["energy"]).reshape(-1, 1)
+
+    def plot_cluster_energy(self, ms):
+        import matplotlib.pyplot as plt
+        X = np.array(self.props["energy"]).reshape(-1, 1)
+        labels = ms.labels_
+        labels_unique = np.unique(labels)
+        n_clusters_ = len(labels_unique)
+
+        plt.figure(1)
+        plt.clf()
+
+        colors = ["#dede00", "#377eb8", "#f781bf"]
+        markers = ["x", "o", "^"]
+
+        for k in range(n_clusters_):
+            my_members = labels == k
+            plt.plot(X[my_members])
+        plt.title("Estimated number of clusters: %d" % n_clusters_)
+        plt.show()
+
+
+class DataEnsemble:
+    def __init__(self, plist=[], dlist=[], units='kcal/mol',) -> None:
+        self.dsets = []
+        self.paths = []
+        if plist:
+            for p in list:
+                self.dsets.append(Dataset(props=p), units=units)
+        elif dlist:
+            for d in dlist:
+                self.dsets.append(d)
+        
+    def save(self, paths=[]):
+        if not paths and not self.paths:
+            raise TypeError("Need the names of the out files!")
+        
+        if paths and len(paths) != len(self.dsets):
+            raise TypeError("Bad number of file names")
+        
+        if paths:
+            self.paths = paths
+
+        for path, d in zip(self.paths, self.dsets):
+            d.save(path)
+    
+    def delete_high_energy(self, cutoff):
+        for d in self.dsets:
+            d.delete_high_energy(cutoff)
+
+    def delete_low_energy(self, cutoff):
+        for d in self.dsets:
+            d.delete_low_energy(cutoff)
+
+    def delete_high_abs_grads(self, cutoff):
+        for d in self.dsets:
+            d.delete_high_abs_grads(cutoff)
+
+    def plot_energy(self, **kargs):
+        from matplotlib import pyplot as plt
+        for d in self.dsets:
+            plt.plot(d.props["energy"], **kargs)
+        plt.show()
+
+    def plot_energy_grad(self):
+        from matplotlib import pyplot as plt
+        for d in self.dsets:
+            d.plot_energy_grad(show=False)
+        plt.show()
+
+    def rezero_energies(self):
+        mine = min([min(d.props["energy"]) for d in self.dsets])
+        for d in self.dsets:
+            d.props["energy"] = [e - mine for e in d.props["energy"]]
+
+    def delete_sparse_clusters(self, ratio=0.1, eps=1):
+        for d in self.dsets:
+            todel = []
+            c, X = d.cluster_energy(eps=eps)
+            idxarr = np.arange(len(X))
+            min_size = int(ratio*len(X))
+            print("minsize: ", min_size, len(X))
+            labels = np.unique(c.labels_)
+            for l in labels:
+                ci = X[c.labels_==l] 
+                if len(ci) < min_size:
+                    todel += idxarr[c.labels_==l].tolist()
+            print(f"deleting {len(todel)} elements")
+            d.delete(todel)
+
+    @classmethod
+    def from_files(cls, paths):
+        """Summary
+
+        Args:
+            path (list): Description
+
+        Returns:
+            DataEnsemble: Description
+        """
+        objs = []
+        for path in paths:
+            obj = torch.load(path)
+            if isinstance(obj, Dataset):
+                objs.append(obj)
+            else:
+                raise TypeError(
+                    '{} is not an instance from {}'.format(path, type(cls))
+                )
+            
+        de = DataEnsemble(dlist=objs)
+        de.paths = paths
+        return de
 
 def force_to_energy_grad(dataset):
     """
