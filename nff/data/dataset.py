@@ -635,21 +635,21 @@ class Dataset(TorchDataset):
 
     def plot_energy_geom(self, show=True, **kwargs):
         # from matplotlib import pyplot as plt
-        if "geom_id" not in self.props:
+        if "geometry" not in self.props:
             return
-        plt.scatter(self.props["geom_id"], self.props["energy"], **kwargs)
+        plt.scatter(self.props["geometry"], self.props["energy"], **kwargs)
         if show:
             plt.show()
 
     def high_energies_geom(self, cutoff):
-        if "geom_id" not in self.props:
+        if "geometry" not in self.props:
             return
-        return [n  for n, e in zip(self.props["geom_id"], self.props["energy"]) if e > cutoff]
+        return [n  for n, e in zip(self.props["geometry"], self.props["energy"]) if e > cutoff]
 
     def low_energies_geom(self, cutoff):
-        if "geom_id" not in self.props:
+        if "geometry" not in self.props:
             return
-        return [n  for n, e in zip(self.props["geom_id"], self.props["energy"]) if e < cutoff]
+        return [n  for n, e in zip(self.props["geometry"], self.props["energy"]) if e < cutoff]
 
     def high_energies_idx(self, cutoff):
         return [n  for n, e in enumerate(self.props["energy"]) if e > cutoff]
@@ -658,9 +658,9 @@ class Dataset(TorchDataset):
         return [n  for n, e in enumerate(self.props["energy"]) if e < cutoff]
 
     def high_abs_grads_geom(self, cutoff):
-        if "geom_id" not in self.props:
+        if "geometry" not in self.props:
             return
-        return [n  for n, e in zip(self.props["geom_id"], self.props["energy_grad"]) if np.any((abs(e) > cutoff).tolist())]
+        return [n  for n, e in zip(self.props["geometry"], self.props["energy_grad"]) if np.any((abs(e) > cutoff).tolist())]
 
     def high_abs_grads_idx(self, cutoff):
         return [n  for n, e in enumerate(self.props["energy_grad"]) if np.any((abs(e) > cutoff).tolist())] 
