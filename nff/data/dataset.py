@@ -24,10 +24,10 @@ from nff.data.graphs import (get_bond_idx, reconstruct_atoms,
 
 try:
     import plotext as plt
-    print("plt is now from plotext")
+    #print("plt is now from plotext")
 except:
     from matplotlib import pyplot as plt
-    print("plt is now from matplotlib")
+    #print("plt is now from matplotlib")
 
 
 class Dataset(TorchDataset):
