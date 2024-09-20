@@ -22,6 +22,13 @@ from nff.data.graphs import (get_bond_idx, reconstruct_atoms,
                              DISTANCETHRESHOLDICT_Z, get_angle_list,
                              add_ji_kj, make_dset_directed)
 
+try:
+    import plotext as plt
+    print("plt is now from plotext")
+except:
+    from matplotlib import pyplot as plt
+    print("plt is now from matplotlib")
+
 
 class Dataset(TorchDataset):
     """Dataset to deal with NFF calculations.
@@ -613,12 +620,12 @@ class Dataset(TorchDataset):
             )
         
     def plot_energy(self):
-        from matplotlib import pyplot as plt
+        # from matplotlib import pyplot as plt
         plt.plot(self.props["energy"])
         plt.show()
 
     def plot_energy_grad(self, show=True, **kwargs):
-        from matplotlib import pyplot as plt
+        # from matplotlib import pyplot as plt
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
@@ -626,12 +633,13 @@ class Dataset(TorchDataset):
         if show:
             plt.show()
 
-    def plot_energy_geom(self):
-        from matplotlib import pyplot as plt
+    def plot_energy_geom(self, show=True, **kwargs):
+        # from matplotlib import pyplot as plt
         if "geom_id" not in self.props:
             return
-        plt.scatter(self.props["geom_id"], self.prop["energy"])
-        plt.show()
+        plt.scatter(self.props["geom_id"], self.props["energy"], **kwargs)
+        if show:
+            plt.show()
 
     def high_energies_geom(self, cutoff):
         if "geom_id" not in self.props:
@@ -677,21 +685,21 @@ class Dataset(TorchDataset):
         return cluster, np.array(self.props["energy"]).reshape(-1, 1)
 
     def plot_cluster_energy(self, ms):
-        import matplotlib.pyplot as plt
+        # import matplotlib.pyplot as plt
         X = np.array(self.props["energy"]).reshape(-1, 1)
         labels = ms.labels_
         labels_unique = np.unique(labels)
         n_clusters_ = len(labels_unique)
 
-        plt.figure(1)
-        plt.clf()
+        # plt.figure(1)
+        # plt.clf()
 
         colors = ["#dede00", "#377eb8", "#f781bf"]
         markers = ["x", "o", "^"]
 
         for k in range(n_clusters_):
             my_members = labels == k
-            plt.plot(X[my_members])
+            plt.plot(X[my_members].flatten().tolist())
         plt.title("Estimated number of clusters: %d" % n_clusters_)
         plt.show()
 
@@ -733,13 +741,13 @@ class DataEnsemble:
             d.delete_high_abs_grads(cutoff)
 
     def plot_energy(self, **kargs):
-        from matplotlib import pyplot as plt
+        # from matplotlib import pyplot as plt
         for d in self.dsets:
             plt.plot(d.props["energy"], **kargs)
         plt.show()
 
     def plot_energy_grad(self):
-        from matplotlib import pyplot as plt
+        # from matplotlib import pyplot as plt
         for d in self.dsets:
             d.plot_energy_grad(show=False)
         plt.show()
