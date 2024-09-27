@@ -205,7 +205,8 @@ class Dataset(TorchDataset):
                                cutoff,
                                undirected=True,
                                key='nbr_list',
-                               offset_key='offsets'):
+                               offset_key='offsets',
+                               device="cuda"):
         """Generates a neighbor list for each one of the atoms in the dataset.
             By default, does not consider periodic boundary conditions.
 
@@ -229,7 +230,8 @@ class Dataset(TorchDataset):
             self._get_periodic_neighbor_list(cutoff=cutoff,
                                              undirected=undirected,
                                              offset_key=offset_key,
-                                             nbr_key=key)
+                                             nbr_key=key,
+                                             device=device)
             return self.props[key], self.props[offset_key]
 
         return self.props[key]
@@ -274,7 +276,8 @@ class Dataset(TorchDataset):
                                     cutoff,
                                     undirected=False,
                                     offset_key='offsets',
-                                    nbr_key='nbr_list'):
+                                    nbr_key='nbr_list',
+                                    device="cuda"):
 
         from nff.io.ase import AtomsBatch
 
@@ -288,7 +291,8 @@ class Dataset(TorchDataset):
                 cell=lattice,
                 pbc=True,
                 cutoff=cutoff,
-                directed=(not undirected)
+                directed=(not undirected),
+                device=device
             )
             nbrs, offs = atoms.update_nbr_list()
             nbrlist.append(nbrs)
