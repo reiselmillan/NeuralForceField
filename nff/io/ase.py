@@ -59,7 +59,7 @@ class AtomsBatch(Atoms):
             directed=DEFAULT_DIRECTED,
             requires_large_offsets=False,
             cutoff_skin=DEFAULT_SKIN,
-            device="cpu",
+            device="cuda",
             **kwargs
     ):
         """
@@ -92,7 +92,11 @@ class AtomsBatch(Atoms):
         self.device = device
         self.requires_large_offsets = requires_large_offsets
         self.mol_nbrs, self.mol_idx = None, None
-        #self.mol_nbrs, self.mol_idx = self.get_mol_nbrs()
+        
+        print("device is: ", self.device)
+        if not torch.cuda.is_available():
+            print("changing device since cuda is not available")
+            self.device = "cpu"
 
     def get_mol_nbrs(self, r_cut=95):
         """
