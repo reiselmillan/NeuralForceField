@@ -93,9 +93,9 @@ class AtomsBatch(Atoms):
         self.requires_large_offsets = requires_large_offsets
         self.mol_nbrs, self.mol_idx = None, None
         
-        print("device is: ", self.device)
+        # print("device is: ", self.device)
         if not torch.cuda.is_available():
-            print("changing device since cuda is not available")
+            # print("changing device since cuda is not available")
             self.device = "cpu"
 
     def get_mol_nbrs(self, r_cut=95):
