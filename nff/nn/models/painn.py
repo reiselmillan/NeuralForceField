@@ -183,7 +183,7 @@ class Painn(nn.Module):
         results['features'] = s_i
 
         if "charge" in self.output_keys:
-            results["charnge"] = self.charge_layer(s_i)
+            results["charge"] = self.charge_layer(s_i)
         if "shielding_tensor" in self.output_keys:
             results["shielding_tensor"] = self.shilding_layer(s_i)
 
