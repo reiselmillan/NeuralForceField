@@ -628,7 +628,7 @@ class Dataset(TorchDataset):
     def plot_energy(self, show=True, label=None ,**kwargs):
         if not label: label=self.path
         # from matplotlib import pyplot as plt
-        plt.plot(self.props["energy"], label, **kwargs)
+        plt.plot(self.props["energy"], label=label, **kwargs)
         if show:
           plt.show()
 
