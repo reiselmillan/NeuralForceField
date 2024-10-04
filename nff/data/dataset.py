@@ -718,7 +718,19 @@ class DataEnsemble:
         elif dlist:
             for d in dlist:
                 self.dsets.append(d)
-        
+
+    def __getitem__(self, idx):
+        if idx >= len(self.dsets[0])+len(self.dsets[1]):
+            idx -= len(self.dsets[0])+len(self.dsets[1])
+            return self.dsets[2][idx]
+        if idx >= len(self.dsets[0]):
+            idx -= len(self.dsets[0])
+            return self.dsets[1][idx]
+        return self.dsets[0][idx]
+    
+    def __len__(self):
+        return len(self.dsets[0])+len(self.dsets[1])+len(self.dsets[2])
+
     def save(self, paths=[]):
         if not paths and not self.paths:
             raise TypeError("Need the names of the out files!")
@@ -775,9 +787,20 @@ class DataEnsemble:
                     todel += idxarr[c.labels_==l].tolist()
             print(f"deleting {len(todel)} elements")
             d.delete(todel)
+    
+    def get_allids(self):
+        return self.dsets[0].props["geometry"].tolist() \
+            + self.dsets[1].props["geometry"].tolist() \
+            + self.dsets[2].props["geometry"].tolist()
+    
+    def get_all(self, key):
+        flist = []
+        for dset in self.dsets:
+            flist += dset.props[key]
+        return flist    
 
     @classmethod
-    def from_files(cls, paths):
+    def from_files(cls, paths=[]):
         """Summary
 
         Args:
@@ -786,9 +809,11 @@ class DataEnsemble:
         Returns:
             DataEnsemble: Description
         """
+        if not paths:
+            paths = ["train.pth.tar", "test.pth.tar", "val.pth.tar"]
         objs = []
         for path in paths:
-            obj = torch.load(path)
+            obj = torch.load(path, weights_only=False)
             if isinstance(obj, Dataset):
                 objs.append(obj)
             else:
