@@ -616,8 +616,8 @@ class Dataset(TorchDataset):
         Raises:
             TypeError: Description
         """
-        self.path = path
         obj = torch.load(path)
+        obj.path = path
         if isinstance(obj, cls):
             return obj
         else:
