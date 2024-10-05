@@ -94,6 +94,7 @@ class Dataset(TorchDataset):
             self.props = props
         self.units = units
         self.to_units('kcal/mol')
+        self.path = ""
 
     def __len__(self):
         """Summary
@@ -616,6 +617,7 @@ class Dataset(TorchDataset):
             TypeError: Description
         """
         obj = torch.load(path)
+        obj.path = path
         if isinstance(obj, cls):
             return obj
         else:
@@ -623,25 +625,29 @@ class Dataset(TorchDataset):
                 '{} is not an instance from {}'.format(path, type(cls))
             )
         
-    def plot_energy(self):
+    def plot_energy(self, show=True, label=None ,**kwargs):
+        if not label: label=self.path
         # from matplotlib import pyplot as plt
-        plt.plot(self.props["energy"])
-        plt.show()
+        plt.plot(self.props["energy"], label=label, **kwargs)
+        if show:
+          plt.show()
 
-    def plot_energy_grad(self, show=True, **kwargs):
+    def plot_energy_grad(self, show=True, label=None, **kwargs):
+        if not label: label=self.path
         # from matplotlib import pyplot as plt
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
-        plt.plot(fs, **kwargs)
+        plt.plot(fs, label=label, **kwargs)
         if show:
             plt.show()
 
-    def plot_energy_geom(self, show=True, **kwargs):
+    def plot_energy_geom(self, show=True, label=None, **kwargs):
+        if not label: label=self.path
         # from matplotlib import pyplot as plt
         if "geometry" not in self.props:
             return
-        plt.scatter(self.props["geometry"], self.props["energy"], **kwargs)
+        plt.scatter(self.props["geometry"], self.props["energy"], label=label, **kwargs)
         if show:
             plt.show()
 
@@ -718,7 +724,19 @@ class DataEnsemble:
         elif dlist:
             for d in dlist:
                 self.dsets.append(d)
-        
+
+    def __getitem__(self, idx):
+        if idx >= len(self.dsets[0])+len(self.dsets[1]):
+            idx -= len(self.dsets[0])+len(self.dsets[1])
+            return self.dsets[2][idx]
+        if idx >= len(self.dsets[0]):
+            idx -= len(self.dsets[0])
+            return self.dsets[1][idx]
+        return self.dsets[0][idx]
+    
+    def __len__(self):
+        return len(self.dsets[0])+len(self.dsets[1])+len(self.dsets[2])
+
     def save(self, paths=[]):
         if not paths and not self.paths:
             raise TypeError("Need the names of the out files!")
@@ -744,16 +762,16 @@ class DataEnsemble:
         for d in self.dsets:
             d.delete_high_abs_grads(cutoff)
 
-    def plot_energy(self, **kargs):
+    def plot_energy(self, **kwargs):
         # from matplotlib import pyplot as plt
         for d in self.dsets:
-            plt.plot(d.props["energy"], **kargs)
+            d.plot_energy(show=False, **kwargs)
         plt.show()
 
-    def plot_energy_grad(self):
+    def plot_energy_grad(self, **kwargs):
         # from matplotlib import pyplot as plt
         for d in self.dsets:
-            d.plot_energy_grad(show=False)
+            d.plot_energy_grad(show=False, **kwargs)
         plt.show()
 
     def rezero_energies(self):
@@ -775,9 +793,20 @@ class DataEnsemble:
                     todel += idxarr[c.labels_==l].tolist()
             print(f"deleting {len(todel)} elements")
             d.delete(todel)
+    
+    def get_allids(self):
+        return self.dsets[0].props["geometry"].tolist() \
+            + self.dsets[1].props["geometry"].tolist() \
+            + self.dsets[2].props["geometry"].tolist()
+    
+    def get_all(self, key):
+        flist = []
+        for dset in self.dsets:
+            flist += dset.props[key]
+        return flist    
 
     @classmethod
-    def from_files(cls, paths):
+    def from_files(cls, paths=[]):
         """Summary
 
         Args:
@@ -786,9 +815,12 @@ class DataEnsemble:
         Returns:
             DataEnsemble: Description
         """
+        if not paths:
+            paths = ["train.pth.tar", "test.pth.tar", "val.pth.tar"]
         objs = []
         for path in paths:
-            obj = torch.load(path)
+            obj = torch.load(path, weights_only=False)
+            obj.path = path
             if isinstance(obj, Dataset):
                 objs.append(obj)
             else:
