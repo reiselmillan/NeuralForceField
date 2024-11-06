@@ -2,3 +2,6 @@ plotext
 torch
 ase
 tqdm
+rdkit
+scikit-learn
+e3fp
