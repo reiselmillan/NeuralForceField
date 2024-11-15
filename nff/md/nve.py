@@ -227,6 +227,7 @@ class Dynamics:
                 self.check_restart(self.restart_from)
                 return
             
+            write_frame_tigre(self.mdparam['traj_filename'], Frame.from_ase_atoms(self.atomsbatch), "a")
             self.stop = True
             self.integrator.stop = True
             sys.exit(0)
