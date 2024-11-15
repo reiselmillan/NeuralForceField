@@ -715,15 +715,16 @@ class Dataset(TorchDataset):
 
 
 class DataEnsemble:
-    def __init__(self, plist=[], dlist=[], units='kcal/mol',) -> None:
+    def __init__(self, plist=[], dlist=[], paths=[], units='kcal/mol') -> None:
         self.dsets = []
-        self.paths = []
+        self.paths = paths
         if plist:
             for p in list:
                 self.dsets.append(Dataset(props=p), units=units)
         elif dlist:
             for d in dlist:
                 self.dsets.append(d)
+        assert len(self.paths) == len(self.dsets)
 
     def __getitem__(self, idx):
         if idx >= len(self.dsets[0])+len(self.dsets[1]):
@@ -828,8 +829,8 @@ class DataEnsemble:
                     '{} is not an instance from {}'.format(path, type(cls))
                 )
             
-        de = DataEnsemble(dlist=objs)
-        de.paths = paths
+        de = DataEnsemble(dlist=objs, paths=paths)
+        #de.paths = paths
         return de
 
 def force_to_energy_grad(dataset):
