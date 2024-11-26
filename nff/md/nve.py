@@ -192,15 +192,15 @@ class Dynamics:
             if self.stop:
                 return
             
-            print("step  ", step, " steps: ", epochs, " nvt steps: ", self.mdparam["nbr_list_update_freq"])
+#            print("step  ", step, " steps: ", epochs, " nvt steps: ", self.mdparam["nbr_list_update_freq"])
             
             # if exploded(self.atomsbatch, 0.7):
-            if step > 0 and step % 10 == 0:
-                print("setting calc cp2k ", step)
-                calc = CP2K()
-                self.atomsbatch.calc = calc
-
-            self.integrator.increment_temperature(self.tempramp)
+#            if step > 0 and step % 10 == 0:
+#                print("setting calc cp2k ", step)
+#                calc = CP2K()
+#                self.atomsbatch.calc = calc
+#
+#            self.integrator.increment_temperature(self.tempramp)
             try:
               self.integrator.run(self.mdparam['nbr_list_update_freq'])
             except Exception as e:
@@ -215,7 +215,7 @@ class Dynamics:
             #     self.atomsbatch.set_positions(self.atoms.get_positions(wrap=True))
             #     self.atomsbatch.set_positions(reconstruct_atoms(atoms, self.atomsbatch.props['mol_idx']))
             self.atomsbatch.update_nbr_list()
-            self.atomsbatch.calc = mlcalc
+#            self.atomsbatch.calc = mlcalc
 
         #self.traj.close()
 

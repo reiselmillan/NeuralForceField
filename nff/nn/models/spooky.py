@@ -306,7 +306,6 @@ class RealSpookyNet(SourceSpooky):
         batch_seg = torch.cat([torch.ones(int(num_atoms)) * i for i, num_atoms in
                                enumerate(num_atoms)]).to(self.int_dtype
                                                          ).to(device)
-
         out = super().forward(Z=Z,
                               Q=batch['charge'].to(self.float_dtype),
                               S=batch['spin'].to(self.float_dtype),
@@ -315,7 +314,7 @@ class RealSpookyNet(SourceSpooky):
                               idx_j=idx_j,
                               num_batch=num_batch,
                               batch_seg=batch_seg,
-                              cell=batch.get('cell'),
+                              cell=batch.get('cell'), # should always be None it is already taking care by generating nbr_list code
                               cell_offsets=cell_offsets)
 
         energy, forces, dipole, f, ea, qa, ea_rep, ea_ele, ea_vdw, pa, c6 = out
