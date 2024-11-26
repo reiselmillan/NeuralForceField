@@ -11,6 +11,7 @@ from nff.nn.modules.schnet import (AttentionPool, SumPool, MolFpPool, IdentityPo
 from nff.nn.modules.diabat import DiabaticReadout, AdiabaticReadout
 from nff.nn.layers import (Diagonalize, ExpNormalBasis)
 from nff.utils.scatter import scatter_add
+import torch
 
 POOL_DIC = {"sum": SumPool,
             "mean": MeanPool,
@@ -18,7 +19,28 @@ POOL_DIC = {"sum": SumPool,
             "mol_fp": MolFpPool,
             "identity": IdentityPool}
 
-
+e0 = 0.005526349406 / 23.06 # e2 / kcal / A
+Ke = 4*torch.pi*e0
+Ke = 1
+def electrostatic(xyz, charges, batch, results):
+    # print(batch["num_atoms"])
+    # print(xyz.shape)
+    # print(charges.shape)
+    # print(results["energy"][0].shape)
+    # quit()
+    last_init_idx = 0
+    for n, natoms in enumerate(batch["num_atoms"]):
+        tempxyz = xyz[last_init_idx:last_init_idx+natoms]
+        e = 0
+        for i in range(tempxyz.shape[0]):
+            for j in range(i):
+                diff = xyz[i]-xyz[j]
+                e += charges[i]*charges[j]/(Ke * torch.sqrt((diff*diff).sum()))
+        # print("ele ", e)
+        # print("results ", results["energy"][n])
+        results["energy"][n] += e.item()
+        last_init_idx += natoms
+    return results
 
 class Painn(nn.Module):
 
@@ -266,6 +288,10 @@ class Painn(nn.Module):
                                      r_ij=r_ij,
                                      nbrs=nbrs,
                                      inference=inference)
+        
+        # if "charge" in self.output_keys:
+        #     # print(all_results["energy"].shape)
+        #     all_results = electrostatic(xyz, all_results["charge"], batch, all_results)
 
         if requires_stress:
             all_results = add_stress(batch=batch,
