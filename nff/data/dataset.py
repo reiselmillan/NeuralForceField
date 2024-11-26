@@ -779,6 +779,7 @@ class DataEnsemble:
         mine = min([min(d.props["energy"]) for d in self.dsets])
         for d in self.dsets:
             d.props["energy"] = [e - mine for e in d.props["energy"]]
+        return float(mine)
 
     def delete_sparse_clusters(self, ratio=0.1, eps=1):
         for d in self.dsets:
