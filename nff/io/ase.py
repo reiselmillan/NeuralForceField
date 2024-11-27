@@ -59,6 +59,8 @@ class AtomsBatch(Atoms):
             directed=DEFAULT_DIRECTED,
             requires_large_offsets=False,
             cutoff_skin=DEFAULT_SKIN,
+            spin=0,
+            charge=0,
             device="cuda",
             **kwargs
     ):
@@ -92,6 +94,8 @@ class AtomsBatch(Atoms):
         self.device = device
         self.requires_large_offsets = requires_large_offsets
         self.mol_nbrs, self.mol_idx = None, None
+        self.spin = spin
+        self.charge = charge
         
         # print("device is: ", self.device)
         if not torch.cuda.is_available():
@@ -284,6 +288,9 @@ class AtomsBatch(Atoms):
 
         if self.mol_idx is not None:
             self.props['mol_idx'] = self.mol_idx
+        
+        self.props["charge"] =  torch.Tensor([self.charge])
+        self.props["spin"] =  torch.Tensor([self.spin])
 
         return self.props
 
