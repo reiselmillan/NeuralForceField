@@ -314,7 +314,7 @@ class RealSpookyNet(SourceSpooky):
                               idx_j=idx_j,
                               num_batch=num_batch,
                               batch_seg=batch_seg,
-                              cell=batch.get('cell'), # should always be None it is already taking care by generating nbr_list code
+                              cell=None, # batch.get('cell'), # should always be None it is already taking care by generating nbr_list code
                               cell_offsets=cell_offsets)
 
         energy, forces, dipole, f, ea, qa, ea_rep, ea_ele, ea_vdw, pa, c6 = out
