@@ -733,6 +733,13 @@ class TorchCalc(Calculator):
 
         self.model.to(device)
 
+
+    def set_props(self, atoms, results):
+        if "charge" in results:
+            for atom, ch in zip(atoms, results["charge"]):
+                atom.charge = ch
+        return atoms
+
     def calculate(self, atoms, properties=["energy", "forces"], all_changes=all_changes):
         if getattr(self, "properties", None) is None:
             self.properties = properties
@@ -746,6 +753,11 @@ class TorchCalc(Calculator):
         prediction = self.model(batch)
         self.results["energy"] = prediction["energy"].detach().cpu().numpy() * (1 / const.EV_TO_KCAL_MOL)#.reshape(-1)
         self.results["forces"] = -prediction["energy_grad"].detach().cpu().numpy() * (1 / const.EV_TO_KCAL_MOL)#.reshape(-1, 3)
+        for k in prediction:
+            if k in ["energy", "energy_grad"]: continue 
+            self.results[k] = prediction[k].detach().cpu().numpy()
+
+        self.set_props(atoms, self.results)
 
     def get_en_forces(self, frame, **args):
         # interface for tigre
