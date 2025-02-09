@@ -155,6 +155,30 @@ class Dataset(TorchDataset):
         self._check_dictionary(newprops)
         self.props = newprops
 
+    def fix_nan_shape(self):
+        for k, val in self.props.items():
+            if k in ["energy", "energy_grad", "formula", "geometry", "num_atoms"]:
+                continue
+            # get shape
+            for na, p in zip(self.props["num_atoms"], val):
+                if not torch.any(p.isnan()):
+                    break
+            shape = list(p.shape)
+            try:
+                # dim will usually be zero, the first dimension if
+                # the number of atoms
+                dim = shape.index(na) 
+            except:
+                dim = -1
+
+            for n, p in enumerate(self.props[k]):
+                if not torch.all(p.isnan()):
+                    continue
+                # override the position with the correct number of atoms
+                if dim >= 0: 
+                    shape[dim] = self.props["num_atoms"][n].item()
+                self.props[k][n] = p.expand(shape)
+
     def _check_dictionary(self, props):
         """Check the dictionary or properties to see if it has the
         specified format.
@@ -616,7 +640,7 @@ class Dataset(TorchDataset):
         Raises:
             TypeError: Description
         """
-        obj = torch.load(path)
+        obj = torch.load(path, weights_only=False)
         obj.path = path
         if isinstance(obj, cls):
             return obj
@@ -638,7 +662,7 @@ class Dataset(TorchDataset):
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
-        plt.plot(fs, label=label, **kwargs)
+        plt.plot(fs[::10], label=label, **kwargs)
         if show:
             plt.show()
 
