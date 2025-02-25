@@ -711,6 +711,11 @@ class Dataset(TorchDataset):
         idx = self.high_abs_grads_idx(cutoff)
         self.delete(idx)
 
+    def rezero_energies(self):
+        mine = min(self.props["energy"])
+        self.props["energy"] = [e - mine for e in self.props["energy"]]
+        return float(mine)
+
     def cluster_energy(self, eps=1.0):
         from sklearn.cluster import DBSCAN
         # ms = MeanShift()
