@@ -123,6 +123,7 @@ class Painn(nn.Module):
         self.cutoff = cutoff
         self.charge_layer = nn.Linear(feat_dim, 1)
         self.shilding_layer = nn.Linear(feat_dim, 9)
+        self.uff_layer = nn.Linear(feat_dim, 3)
 
     def set_cutoff(self):
         if hasattr(self, "cutoff"):
@@ -206,6 +207,8 @@ class Painn(nn.Module):
 
         if "charge" in self.output_keys:
             results["charge"] = self.charge_layer(s_i)
+        if "uff_grad" in self.output_keys:
+            results["uff_grad"] = self.uff_layer(s_i)
         if "shielding_tensor" in self.output_keys:
             results["shielding_tensor"] = self.shilding_layer(s_i)
 

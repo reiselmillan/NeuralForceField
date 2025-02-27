@@ -267,6 +267,12 @@ class AtomsBatch(Atoms):
                             'num_atoms', 'nbr_list' and 'offsets'
         """
 
+        if "mol_nbrs" not in self.props:
+            self.cutoff = torch.inf
+            self.update_nbr_list()
+            self.props['nbr_list'] = self.nbr_list
+            self.props['offsets'] = self.offsets
+
         if self.nbr_list is None or self.offsets is None:
             self.update_nbr_list()
 

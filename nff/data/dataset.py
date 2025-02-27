@@ -638,7 +638,22 @@ class Dataset(TorchDataset):
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
-        plt.plot(fs, label=label, **kwargs)
+        print("done appendeing")
+        plt.plot(np.array(fs), label=label, **kwargs)
+        if show:
+            plt.show()
+
+    def plot_energy_key(self, key=None, show=True, **kwargs):
+        if key is None: return
+        if key not in self.props:  return
+        values = set([float(i) for i in self.props[key]])
+        ens = [[] for _ in values]
+        for n, v in enumerate(values):
+            for d, e in zip(self.props[key], self.props["energy"]):
+                if d == v:
+                    ens[n].append(e)
+        for e, v in zip(ens, values):
+            plt.plot(e, label=v, **kwargs)
         if show:
             plt.show()
 
@@ -773,6 +788,11 @@ class DataEnsemble:
         # from matplotlib import pyplot as plt
         for d in self.dsets:
             d.plot_energy_grad(show=False, **kwargs)
+        plt.show()
+
+    def plot_energy_key(self, key=None):
+        for d in self.dsets:
+            d.plot_energy_key(key, show=False)
         plt.show()
 
     def rezero_energies(self):
