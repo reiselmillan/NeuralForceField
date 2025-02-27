@@ -155,6 +155,30 @@ class Dataset(TorchDataset):
         self._check_dictionary(newprops)
         self.props = newprops
 
+    def fix_nan_shape(self):
+        for k, val in self.props.items():
+            if k in ["energy", "energy_grad", "formula", "geometry", "num_atoms"]:
+                continue
+            # get shape
+            for na, p in zip(self.props["num_atoms"], val):
+                if not torch.any(p.isnan()):
+                    break
+            shape = list(p.shape)
+            try:
+                # dim will usually be zero, the first dimension if
+                # the number of atoms
+                dim = shape.index(na) 
+            except:
+                dim = -1
+
+            for n, p in enumerate(self.props[k]):
+                if not torch.all(p.isnan()):
+                    continue
+                # override the position with the correct number of atoms
+                if dim >= 0: 
+                    shape[dim] = self.props["num_atoms"][n].item()
+                self.props[k][n] = p.expand(shape)
+
     def _check_dictionary(self, props):
         """Check the dictionary or properties to see if it has the
         specified format.
@@ -616,7 +640,7 @@ class Dataset(TorchDataset):
         Raises:
             TypeError: Description
         """
-        obj = torch.load(path)
+        obj = torch.load(path, weights_only=False)
         obj.path = path
         if isinstance(obj, cls):
             return obj
@@ -638,6 +662,7 @@ class Dataset(TorchDataset):
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
+<<<<<<< HEAD
         print("done appendeing")
         plt.plot(np.array(fs), label=label, **kwargs)
         if show:
@@ -654,6 +679,9 @@ class Dataset(TorchDataset):
                     ens[n].append(e)
         for e, v in zip(ens, values):
             plt.plot(e, label=v, **kwargs)
+=======
+        plt.plot(fs[::10], label=label, **kwargs)
+>>>>>>> cd0c95f55c807aeb640926500554ce7afa4a5ba2
         if show:
             plt.show()
 
@@ -701,6 +729,11 @@ class Dataset(TorchDataset):
     def delete_high_abs_grads(self, cutoff):
         idx = self.high_abs_grads_idx(cutoff)
         self.delete(idx)
+
+    def rezero_energies(self):
+        mine = min(self.props["energy"])
+        self.props["energy"] = [e - mine for e in self.props["energy"]]
+        return float(mine)
 
     def cluster_energy(self, eps=1.0):
         from sklearn.cluster import DBSCAN
@@ -799,6 +832,7 @@ class DataEnsemble:
         mine = min([min(d.props["energy"]) for d in self.dsets])
         for d in self.dsets:
             d.props["energy"] = [e - mine for e in d.props["energy"]]
+        return float(mine)
 
     def delete_sparse_clusters(self, ratio=0.1, eps=1):
         for d in self.dsets:
