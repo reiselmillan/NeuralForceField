@@ -662,9 +662,7 @@ class Dataset(TorchDataset):
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
-<<<<<<< HEAD
-        print("done appendeing")
-        plt.plot(np.array(fs), label=label, **kwargs)
+        plt.plot(np.array(fs)[::100], label=label, **kwargs)
         if show:
             plt.show()
 
@@ -679,9 +677,6 @@ class Dataset(TorchDataset):
                     ens[n].append(e)
         for e, v in zip(ens, values):
             plt.plot(e, label=v, **kwargs)
-=======
-        plt.plot(fs[::10], label=label, **kwargs)
->>>>>>> cd0c95f55c807aeb640926500554ce7afa4a5ba2
         if show:
             plt.show()
 
