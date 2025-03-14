@@ -125,6 +125,7 @@ class Painn(nn.Module):
         self.types_layer = nn.Linear(feat_dim, 1)
         self.uff_layer = nn.Linear(feat_dim, 3)
         self.shilding_layer = nn.Linear(feat_dim, 9)
+        self.uff_layer = nn.Linear(feat_dim, 3)
 
     def set_cutoff(self):
         if hasattr(self, "cutoff"):

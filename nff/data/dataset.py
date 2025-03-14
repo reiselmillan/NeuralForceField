@@ -662,7 +662,21 @@ class Dataset(TorchDataset):
         fs = []
         for f in self.props["energy_grad"]:
             fs += f.flatten().tolist()
-        plt.plot(fs[::10], label=label, **kwargs)
+        plt.plot(np.array(fs)[::100], label=label, **kwargs)
+        if show:
+            plt.show()
+
+    def plot_energy_key(self, key=None, show=True, **kwargs):
+        if key is None: return
+        if key not in self.props:  return
+        values = set([float(i) for i in self.props[key]])
+        ens = [[] for _ in values]
+        for n, v in enumerate(values):
+            for d, e in zip(self.props[key], self.props["energy"]):
+                if d == v:
+                    ens[n].append(e)
+        for e, v in zip(ens, values):
+            plt.plot(e, label=v, **kwargs)
         if show:
             plt.show()
 
@@ -710,6 +724,11 @@ class Dataset(TorchDataset):
     def delete_high_abs_grads(self, cutoff):
         idx = self.high_abs_grads_idx(cutoff)
         self.delete(idx)
+
+    def rezero_energies(self):
+        mine = min(self.props["energy"])
+        self.props["energy"] = [e - mine for e in self.props["energy"]]
+        return float(mine)
 
     def cluster_energy(self, eps=1.0):
         from sklearn.cluster import DBSCAN
@@ -797,6 +816,11 @@ class DataEnsemble:
         # from matplotlib import pyplot as plt
         for d in self.dsets:
             d.plot_energy_grad(show=False, **kwargs)
+        plt.show()
+
+    def plot_energy_key(self, key=None):
+        for d in self.dsets:
+            d.plot_energy_key(key, show=False)
         plt.show()
 
     def rezero_energies(self):
