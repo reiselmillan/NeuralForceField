@@ -214,6 +214,7 @@ class Painn(nn.Module):
             results["uff_grad"] = self.uff_layer(s_i)
         if "shielding_tensor" in self.output_keys:
             results["shielding_tensor"] = self.shilding_layer(s_i)
+            #print(self.shilding_layer(s_i))
 
         return results, xyz, r_ij, nbrs
 
