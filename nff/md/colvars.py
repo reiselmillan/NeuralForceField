@@ -88,8 +88,8 @@ class ColVar(torch.nn.Module):
             self.ring_inds = torch.LongTensor(self.info_dict['ring_inds'])
            
         elif self.info_dict['name'] == 'projecting_veconplanenormal':
-            self.mol_inds   = torch.LongTensor(self.info_dict['mol_inds']) 
-            self.ring_inds = torch.LongTensor(self.info_dict['ring_inds'])
+            self.mol_inds   = torch.LongTensor(self.info_dict['mol_idx']) 
+            self.ring_inds = torch.LongTensor(self.info_dict['ring_idx'])
             
         elif self.info_dict['name'] == 'projection_channelnormal':
             self.mol_inds = torch.LongTensor(self.info_dict['mol_inds']) 
