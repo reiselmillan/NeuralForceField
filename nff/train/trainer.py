@@ -128,12 +128,13 @@ class Trainer:
         self.metric_objective = metric_objective
 
         restore = False
+        print(self.checkpoint_path)
         if os.path.exists(self.checkpoint_path):
             try:
                 self.restore_checkpoint()
                 restore = True
             except Exception as e:
-                print(e)
+                print("error from restore: ", e)
         if not restore:
             self.epoch = 0
             self.step = 0
@@ -252,7 +253,7 @@ class Trainer:
         chkpt = os.path.join(
             self.checkpoint_path, "checkpoint-" + str(epoch) + ".pth.tar"
         )
-        self.state_dict = torch.load(chkpt, map_location='cpu')
+        self.state_dict = torch.load(chkpt, map_location='cpu', weights_only=False)
 
     def loss_backward(self, loss):
         if hasattr(loss, "backward"):

@@ -336,7 +336,11 @@ cvtypes = {
 }
 
 def get_cv_from_dic(val, device="cpu"):
-    if val["type"].lower() == "pvv":
+    if val["type"].lower() == "pvp":
+        mol_inds = val["mol_idx"]  # caution check type
+        ring_inds = val["ring_idx"]
+        cv = ProjVectorPlane(mol_inds, ring_inds)
+    elif val["type"].lower() == "pvv":
         mol_inds = val["mol_idx"]
         reference = val['ref_idx']
         vector = val["vector"]
