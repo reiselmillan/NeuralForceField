@@ -301,15 +301,18 @@ class AtomsBatch(Atoms):
         return self.props
 
     def get_list_atoms(self):
-
-        if self.props.get('num_atoms') is None:
+        #print("Getting list atoms ", len(self), self.directed, self.props.get('num_atoms')) # Reisel
+        self.directed = True # Reisel This is to avoid the error with Plumed calculator !!
+        if not self.props.get('num_atoms'):
             self.props['num_atoms'] = torch.LongTensor([len(self)])
+            #self.props['num_atoms'] = torch.LongTensor([len(self.get_positions())])
 
         mol_split_idx = self.props['num_atoms'].tolist()
 
         positions = torch.Tensor(self.get_positions())
         Z = torch.LongTensor(self.get_atomic_numbers())
-
+        
+        #print(positions.shape, mol_split_idx, self.props["num_atoms"])
         positions = list(positions.split(mol_split_idx))
         Z = list(Z.split(mol_split_idx))
         masses = list(torch.Tensor(self.get_masses())
@@ -754,11 +757,14 @@ class TorchCalc(Calculator):
 
         # get_batch takes care of update_nbr_list if it is not set
         # the Dynamics class takes care of this in md runs
+        # print("TORCHCALC len(atoms) in calculated func ", len(atoms), type(atoms), atoms.directed)
+        #atoms.directed = True
         batch = batch_to(atoms.get_batch(), self.device)
 
         prediction = self.model(batch)
         self.results["energy"] = prediction["energy"].detach().cpu().numpy() * (1 / const.EV_TO_KCAL_MOL)#.reshape(-1)
         self.results["forces"] = -prediction["energy_grad"].detach().cpu().numpy() * (1 / const.EV_TO_KCAL_MOL)#.reshape(-1, 3)
+        
         for k in prediction:
             if k in ["energy", "energy_grad"]: continue 
             self.results[k] = prediction[k].detach().cpu().numpy()
