@@ -6,6 +6,7 @@ import nff.utils.constants as const
 from copy import deepcopy
 from sklearn.utils import shuffle as skshuffle
 from sklearn.model_selection import train_test_split
+from sklearn import linear_model
 from ase import Atoms
 from ase.neighborlist import neighbor_list
 from torch.utils.data import Dataset as TorchDataset
@@ -21,6 +22,7 @@ from nff.data.graphs import (get_bond_idx, reconstruct_atoms,
                              get_neighbor_list, generate_subgraphs,
                              DISTANCETHRESHOLDICT_Z, get_angle_list,
                              add_ji_kj, make_dset_directed)
+from nff.data.formula import all_atoms, reg_atom_count
 
 try:
     import plotext as plt
@@ -1211,3 +1213,45 @@ def split_train_validation_test(dataset,
                                    **kwargs)
 
     return train, validation, test
+
+def get_stoich_dict(dataset):
+    formulas = list(set(dataset.props["formula"]))
+    ens = []
+    minen_dict = {}
+    form_conv = []
+    for f in formulas:
+        if f is None:
+            print("There are geoms with null formula !!")
+            continue
+        energies = [dataset.props["energy"][n] 
+                    for n in range(len(dataset)) 
+                    if dataset.props["formula"][n] == f ]
+        if len(energies) == 0:
+            print("No calcs for: ", f)
+            continue
+        minen = min(energies)
+        minen_dict[f] = minen
+        ens.append(minen)
+        form_conv.append(f)
+    d = dict([(f, 0) for f in form_conv])
+
+    atoms_list = all_atoms(d)
+    x_in = np.stack([reg_atom_count(formula, atoms_list)
+                        for formula in form_conv])
+
+    y_out = np.array(ens)
+
+    clf = linear_model.LinearRegression()
+    clf.fit(x_in, y_out)
+    pred = (clf.coef_ * x_in + clf.intercept_).sum(-1)
+    err = abs(pred - y_out).mean() #* 627.5
+    print(("MAE between target energy and stoich "
+            "energy is %.3e kcal/mol" % err))
+    print("R :", clf.score(x_in, y_out))
+    fit_dic = {atom: float(coef) for atom, coef in zip(
+        atoms_list, clf.coef_.reshape(-1))}
+    stoich_dict = {**fit_dic, "offset": clf.intercept_.item()}    
+
+    # add min energy
+    stoich_dict["min_e"] = min([float(e) for e in minen_dict.values()])
+    return stoich_dict, minen_dict
